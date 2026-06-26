@@ -1,0 +1,15 @@
+(load "lisp/photon.el")
+
+(photon-use-elisp-vector-backend)
+
+(let* ((config (photon-make-config 8 8 4 2))
+       (model (photon-make-model config))
+       (corpus '(1 2 3 4 1 2 3 4 1 2 3 4))
+       (before (photon-evaluate model corpus 4))
+       (history (photon-train model corpus 4 2 0.20))
+       (after (photon-evaluate model corpus 4)))
+  (list (cons 'backend (photon-vector-backend-name))
+        (cons 'before before)
+        (cons 'history history)
+        (cons 'after after)
+        (cons 'generated (photon-model-generate model '(1 2 3 4) 4))))

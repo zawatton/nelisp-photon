@@ -1,0 +1,10 @@
+(load "lisp/photon.el")
+
+(let* ((text "nelisp ai nelisp ai ")
+       (result (photon-train-text text 4 8 4 4 0.20))
+       (model (cdr (assq 'model result)))
+       (generated (photon-model-generate-text model "nel" 8)))
+  (list (cons 'vocab-size (length (cdr (assq 'vocab result))))
+        (cons 'before (cdr (assq 'before result)))
+        (cons 'after (cdr (assq 'after result)))
+        (cons 'generated generated)))

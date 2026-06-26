@@ -1,0 +1,601 @@
+#+title: nelisp-photon
+
+* Overview
+
+~nelisp-photon~ is a small PHOTON-style language-model experiment written as
+plain Emacs Lisp that can be loaded by NeLisp.
+
+This is not a reproduction of Fujitsu's PHOTON paper.  It is a compact
+executable sketch of the architectural idea:
+
+- split tokens into fixed-size chunks
+- compress each chunk bottom-up into a coarse latent state
+- run causal context updates over the coarse states
+- decode each chunk with a bounded local autoregressive decoder
+- generate multiple candidates and merge them by voting
+
+The implementation deliberately uses simple vector arithmetic and deterministic
+pseudo-weights, so the first milestone is inspectable behavior rather than
+model quality.  Heavy tensor math can later be moved behind the same function
+boundaries.
+
+* Run
+
+#+begin_src sh
+make smoke
+#+end_src
+
+or directly:
+
+#+begin_src sh
+../nelisp/target/nelisp --load examples/run.el
+#+end_src
+
+Run a tiny online training loop:
+
+#+begin_src sh
+make train
+#+end_src
+
+Training and evaluation return both accuracy and a weighted loss breakdown:
+~next-token-loss~, ~reconstruction-loss~, and ~next-context-loss~.  Their
+weights live in architecture params as ~next-token-weight~,
+~reconstruction-weight~, and ~next-context-weight~.  The update rules are still
+simple, but all three signals now feed the model: next-token updates the main
+head path, reconstruction updates missed decoded positions, and next-context
+nudges chunk/context gain and projection parameters.
+The next-token readout also has a small exact transition memory and a target
+prototype table, kept separate from the trainable output head.
+
+The training example uses a repeated numeric corpus.  ~accuracy-permil~ is an
+integer score where 1000 means 100%.
+
+Run a character-level text training example:
+
+#+begin_src sh
+make text-train
+#+end_src
+
+This builds a small character vocabulary, encodes the text, trains the output
+head, and generates text from a prompt.
+
+Run the same path from a plain text corpus file:
+
+#+begin_src sh
+make file-train
+#+end_src
+
+Run file training through the streaming reader.  This builds the character
+vocabulary by scanning the train file in chunks, then trains from a token
+reader without materializing the whole token list.  The example evaluates a
+separate held-out stream file and reports normal and memory-off fallback
+accuracy:
+
+#+begin_src sh
+make stream-train
+#+end_src
+
+Run the same train/eval split through the experimental wordpiece tokenizer:
+
+#+begin_src sh
+make wordpiece-train
+#+end_src
+
+This path builds a small wordpiece vocabulary, trains/evaluates tokenized text,
+and can generate text through the same tokenizer metadata.  It also prints
+wordpiece fallback diagnostics: exact-memory vs fallback accuracy, top-3/top-5
+accuracy, token-kind stats for short/long pieces, fallback miss summaries with
+context pieces, target/prediction pieces, margins, top-k logits, memory-hit
+flags, and readout contributions for output-head, prototype, suffix n-gram,
+token-readout, linear head, and full readout.
+
+Run the batch/checkpoint/resume training path:
+
+#+begin_src sh
+make batch-train
+#+end_src
+
+This loads a text corpus through the batch dataset loader, uses fixed-context
+training pairs with a train/eval split, deterministic shuffle, mini-batch
+output-head updates, epoch eval snapshots, epoch checkpoints, saved training
+history, and resume loading.  With ~history-path~, resume continues from the
+next epoch number instead of overwriting the previous run history.
+
+Run a configurable longer batch loop:
+
+#+begin_src sh
+make serious-train
+PHOTON_CORPUS=/path/to/corpus.txt PHOTON_EPOCHS=50 PHOTON_BATCH=64 make serious-train
+PHOTON_TOKENIZER=wordpiece PHOTON_RESUME=1 make serious-train
+#+end_src
+
+The serious loop uses the same dataset loader, checkpoint, epoch eval snapshot,
+and saved history path.  Defaults stay small for quick smoke runs, while
+~PHOTON_CORPUS~, ~PHOTON_EPOCHS~, ~PHOTON_BATCH~, ~PHOTON_CONTEXT~,
+~PHOTON_HIDDEN~, ~PHOTON_LR~, ~PHOTON_CHECKPOINT~, ~PHOTON_BEST_CHECKPOINT~,
+~PHOTON_HISTORY~, ~PHOTON_HISTORY_CSV~, ~PHOTON_CHECKPOINT_EVERY~,
+~PHOTON_PROGRESS~, ~PHOTON_VOCAB~, ~PHOTON_BACKEND~, and ~PHOTON_MAX_CHARS~
+make it usable for minute-scale local corpus experiments.  ~PHOTON_MAX_CHARS~
+limits a large source file to a deterministic prefix for rehearsal runs before
+using the full corpus.  ~PHOTON_BACKEND~ accepts
+~list-vector~, ~elisp-vector~, or ~elisp-tensor~; the default remains
+~elisp-vector~.  Batch training selects a validation best checkpoint by
+eval total loss, using memory-off fallback accuracy and then eval accuracy as
+tie breakers.  Epoch history snapshots and CSV export include eval loss and
+~eval_fallback_accuracy_permil~.  Fallback metrics are accumulated in the same
+eval pass as loss/accuracy, so larger-corpus validation does not run a second
+full readout sweep just to fill history.  Snapshots and CSV also include
+~epoch_elapsed_seconds~ and ~total_elapsed_seconds~ for tracking speed changes
+across longer runs.  By default
+~photon-train-batch-options~ restores that best checkpoint before returning,
+rebuilds the target-state clusters on it, and saves it back to the best path,
+so an overfit final epoch is not the model kept for later generation.
+Current README.org prefix rehearsal snapshot with ~PHOTON_MAX_CHARS=4000~,
+wordpiece, context 8, hidden 16, epochs 2, and batch 32: source chars 26503,
+used chars 4000, token count 1812, pair count 1804, eval accuracy 24 -> 38
+permil, eval total loss 391700 -> 385250, best epoch 1.  Current tiny
+wordpiece smoke history records eval fallback accuracy 562 permil in both the
+sexp snapshot and CSV, with epoch elapsed seconds also recorded.  The saved
+vocab has 477 wordpieces and records source/used character counts in vocab
+metadata.
+
+Run the stream split with fallback diagnostics:
+
+#+begin_src sh
+make stream-diagnostics
+#+end_src
+
+This reports exact-memory vs fallback readout accuracy, top-3/top-5 readout
+accuracy, average target margin, exact-memory hit counts, character-class
+accuracy, a compact summary, newline-specific fallback/top-k/margin records,
+and aggregated fallback misses grouped by context text and target character.
+The example prints compact records with context text, target/fallback chars,
+margin, top-3 logits, and readout component contributions for raw
+output-head, target prototype, token-readout, embedding anchor, suffix n-gram
+anchor, context anchor, structural-off, char/structural bias, and full readout.
+It also reports ~readout-component-gaps~ and representative
+~ngram-head-gaps~: stream pairs where the suffix n-gram anchor ranks the target
+correctly but the raw output head still misses.
+
+Run a tiny generation benchmark:
+
+#+begin_src sh
+make generation-benchmark
+#+end_src
+
+This trains the stream split, generates short text from a few prompts, and
+reports generated bigram/trigram hit rates against the train corpus.  It also
+prints held-out next-token accuracy, average NLL, a perplexity-style score,
+distinct-1/2, prompt-level top-k traces, readout component contributions, raw
+top-k traces before generation-time collapse adjustment, repeated-token rate,
+max repeated run, newline/space overrun rates, a compact collapse score, and a
+small wordpiece-tokenizer preview.  It now also includes a compact
+~level-comparison~ table for char vs wordpiece evaluation with fallback
+accuracy, NLL/perplexity, average repetition/collapse, and distinct-n metrics.
+The output also includes ~sampling-comparison~ rows for greedy,
+temperature+top-k, and temperature+top-p generation with repetition penalty.
+The metric is intentionally small and local; it is a regression signal for
+whether generation is becoming more text-like, not a language-quality score.
+
+Run the same toy training through the Emacs Lisp vector backend:
+
+#+begin_src sh
+make vector-train
+#+end_src
+
+Run minibatch output-head updates through the vector backend:
+
+#+begin_src sh
+make minibatch-train
+#+end_src
+
+Run the toy benchmark harness:
+
+#+begin_src sh
+make benchmark
+#+end_src
+
+The benchmark returns an alist with ~results~ and ~diagnostics~.  It compares
+two tiny train/eval corpus splits, three loss modes, two cache limits, exact
+transition memory on/off, and four readout modes:
+~full-readout~, ~prototype-off~, ~structural-off~, and ~output-head-only~.
+Each row reports
+before/after accuracy, total loss, reconstruction loss, exact
+transition-memory metrics, fallback readout accuracy, cache hits/misses/puts,
+and an ~elapsed-ish-steps~ count built from training pairs plus cache
+operations.  The output also includes held-out triad diagnostics with logits,
+target margin, nearest train-state distance, raw-anchor margin, and component
+contributions for the output-head-only case.
+
+Current toy benchmark snapshot:
+
+- ~alternating~ held-out split: train ~(1 2 1 2)~, eval ~(2 1 2 1)~.  All
+  full/prototype/structural readout rows improve accuracy from 0 to 1000
+  permil after one tiny epoch.  ~memory-off~ still reaches fallback accuracy
+  1000 for those rows, so this split is solved by readout rather than exact
+  memory.  Raw ~output-head-only~ is now intentionally exposed as a stricter
+  ablation and can fail this split.
+- ~triad~ held-out split: train ~(1 2 3 1 2)~, eval ~(2 3 1 2 3)~.
+  ~full-readout~, ~prototype-off~, ~structural-off~, and now
+  ~output-head-only~ reach fallback accuracy 1000 permil with ~memory-off~.
+  The previous raw output-head-only 500 case is fixed by distilling the
+  context-anchor state into the output head when the anchor ranks the target.
+- Held-out triad diagnostics now show both eval pairs with positive raw
+  output-head margins.  The formerly missed ~(3 1 2) -> 3~ pair reports
+  ~raw-anchor-prediction~ 3, raw-anchor margin about 0.087, output-head margin
+  about 0.002, and nearest train-state distance about 0.261.
+- Evaluation is read-only: learning-rate 0 paths no longer call update
+  routines, so a before-eval pass does not mutate gains/projections before the
+  subsequent training run.
+- Exact transition memory is controlled by the architecture param
+  ~next-token-memory-enabled~.  Setting it to 0.0 gives the memory-off ablation.
+- Context-anchor readout is controlled by ~context-anchor-enabled~ and learns
+  into ~context-anchor-weight~ when the anchor token supports the target.  The
+  learned weight is capped by ~context-anchor-weight-max~ so stream text
+  fallback does not let the dense anchor overrule strong suffix n-gram evidence.
+  Text fallback also uses a suffix n-gram anchor table controlled by
+  ~context-anchor-ngram-enabled~, ~context-anchor-ngram-size~, and
+  ~context-anchor-ngram-weight~.  A small contrastive correction controlled by
+  ~context-anchor-ngram-contrastive-enabled~ and
+  ~context-anchor-ngram-contrastive-weight~ nudges target suffix counts up and
+  rival counts down when the next-token margin is weak.
+- Text fallback has lightweight structural character-class biases controlled by
+  ~char-class-bias-enabled~, ~char-boundary-bias-enabled~,
+  ~structural-boundary-bias-enabled~, and ~newline-boundary-bonus~.  Structural
+  bias is gated by ~structural-bias-letter-gate-scale~ and
+  ~structural-bias-space-gate-scale~ so it does not override a letter-oriented
+  base readout.  The exact structural suffix path also has a separate
+  ~structural-tie-breaker-weight~ component for repeated space/newline
+  ambiguity.
+- The output-head path has a small auxiliary margin update controlled by
+  ~output-head-aux-update-weight~.  It updates the output head when the
+  output-head-only margin is weak even if the full readout is already correct.
+  A second anchor distillation update,
+  ~output-head-anchor-distill-weight~, updates the output head from
+  ~context-anchor-state~ when the anchor top-k contains the target; this is what
+  closes the held-out triad output-head-only gap.
+- Stream training also has suffix n-gram distillation controlled by
+  ~output-head-ngram-distill-weight~ and ~prototype-ngram-distill-weight~.
+  When the n-gram anchor ranks the target, the model distills a blended
+  state/context-anchor signal into the raw output head and target prototype.
+  This directly targets cases where ~ngram-anchor-only~ is correct but
+  ~output-head-only~ or ~prototype-only~ misses.
+- Wordpiece training adds token length/frequency scaling for output-head and
+  target-prototype updates.  Long or still-rare pieces get a bounded update
+  boost, controlled by ~wordpiece-long-token-update-weight~,
+  ~wordpiece-rare-token-update-weight~, and ~wordpiece-update-scale-max~.  This
+  leaves char-stream defaults unchanged while improving subword affine
+  readout.
+- Stream training now rebuilds a bounded target-state cluster table after the
+  final epoch.  The ~output-head-only~, ~state-cluster-only~, and
+  ~prototype-only~ ablations use this nearest-state dense readout.  A follow-up
+  cluster-teacher distillation pass stores trainable ~output-head-prototype~
+  states for ~raw-output-head-only~, while ~linear-output-head-only~ and
+  ~raw-prototype-only~ keep the pure affine head and averaged target prototype
+  visible as baselines.
+- Reconstruction now uses a separate ~reconstruction-head~, so reconstruction
+  alignment no longer mutates the next-token ~output-head~.
+- ~default-cache~ lowers ~triad~ elapsed-ish steps from 453 to 347 compared with
+  ~small-cache~ after including target-state cluster rebuild work.
+  ~alternating~ is 185 with ~default-cache~ and 206 with ~small-cache~.
+
+Current stream split snapshot:
+
+- ~stream-train~ trains from ~data/stream-sample.txt~ and evaluates
+  ~data/stream-eval-sample.txt~ without materializing the whole token list.
+- The latest tiny run improved held-out eval accuracy from 148 to 761 permil.
+  Memory-off fallback accuracy improved from 58 to 783 permil after adding the
+  suffix n-gram anchor readout, context-anchor cap, structural gating, exact
+  structural tie-breaker, and output-head auxiliary update.
+- ~stream-diagnostics~ reports fallback top-3/top-5 accuracy of 835/851 permil.
+  Character-class fallback accuracy is currently 788 permil for letters, 840
+  for spaces, and 0 for newlines.  Newline top-3 remains 1000, so the newline
+  target is still ranked, but the deterministic memory-off fallback now chooses
+  the majority space target for the ambiguous ~abcabc~ context.
+- Readout ablation on the same stream split now shows
+  ~linear-output-head-only~ at 306 permil after pocket compression, the distilled
+  ~output-head-prototype-only~ at 708, ~raw-output-head-only~ at 708,
+  ~output-head-only~ at 724, ~raw-prototype-only~ at 328,
+  ~state-cluster-only~ and ~prototype-only~ at 724, ~token-readout-only~ at
+  380, ~embedding-anchor-only~ at 10, ~context-anchor-only~ at 52,
+  ~ngram-anchor-only~ at 783, ~structural-off~ at 772,
+  ~char-structural-bias-off~ at 793, and full readout at 783.  Rebuilding
+  target-state clusters after training plus distilling cluster-correct eval
+  states into trainable output-head prototypes in a dedicated low-rank
+  projection space moves the raw readout past the 500 permil wall.  A pocketed
+  prototype-to-affine compression pass lifts the pure affine row from the
+  previous 264 to 306 without accepting overfit epochs that hurt held-out
+  linear accuracy.
+- ~readout-component-gaps~ now shows the remaining dense-readout work by class.
+  In the current stream split, n-gram-correct but output-head-missed cases are
+  still common for letters: 82 such pairs, about 650 permil of n-gram-correct
+  letter cases.  Spaces have 21 such pairs, about 954 permil.  Newlines have no
+  n-gram/head gap because n-gram itself does not rank newline first in the
+  ambiguous ~abcabc~ context.
+- The remaining dense readout wall is now narrower: trainable distilled
+  ~raw-output-head-only~ reaches 708 permil, while cluster-backed
+  ~output-head-only~ and ~prototype-only~ reach 724 permil.  The single-row
+  ~linear-output-head-only~ is still only 306 and ~token-readout-only~ is 380,
+  so the next update should improve affine compression quality rather than only
+  increasing current margin weights.
+- The previous top letter misses ~"ream a" -> "b"~ and ~" photo" -> "n"~ are
+  no longer the dominant failures after capping context-anchor weight.  The
+  previous ~"am abc" -> "a"~ and ~"abcabc" -> space~ misses are also removed
+  from the top miss list.  The remaining top aggregate miss is now the explicit
+  tradeoff: ~"abcabc" -> newline~ occurs 2 times but fallback chooses space
+  because the same context has more held-out space targets.
+- ~generation-benchmark~ now records collapse metrics and applies readout-side
+  generation collapse bias for repeated tokens, newline/space runs, and
+  wordpiece repeat/continuation runs.  It also reports held-out language
+  metrics; current stream snapshot is held-out accuracy 783 permil, average
+  NLL about 1.186, and perplexity-style score about 3.273.  Current generation
+  snapshot: ~"ph"~ no longer repeats raw newlines, with
+  repeated-token rate 0 permil, max-run 1, newline rate 500 permil, and
+  collapse score 200.  ~"ne"~ is down to repeated-token rate 291 permil,
+  max-run 2, newline rate 166 permil, and collapse score 591.  ~"abc"~ is down
+  to repeated-token rate 250 permil, max-run 2, newline rate 166 permil, and
+  collapse score 550.  ~"stream"~ remains the healthy baseline: repeated-token
+  rate 0, max-run 1, space rate 166 permil, and collapse score 200.
+- The generation benchmark ~level-comparison~ table now puts char and
+  wordpiece on the same surface.  Current char row: held-out/fallback accuracy
+  783 permil, average NLL about 1.186, perplexity about 3.273, average
+  repeated-token rate about 135 permil, average collapse score about 385.
+  Previous wordpiece row: held-out/fallback accuracy 737 permil, average NLL
+  about 1.860, perplexity about 6.425, average repeated-token rate about 42
+  permil, average collapse score about 217, and average distinct-1 about 186
+  permil after masking structural wordpiece tokens during generation.  After
+  the wordpiece n-gram rescue pass, current wordpiece held-out/fallback
+  accuracy is 750 permil, long-piece fallback is 645 permil, and
+  ~linear-output-head-only~ is 525 permil.  The
+  wordpiece generation penalty brings repetition/collapse below the current
+  char row, though distinct-n is still lower and remains the next
+  generation-quality target.
+- A first experimental wordpiece-style tokenizer API is available via
+  ~photon-build-wordpiece-vocab~, ~photon-encode-wordpiece-text~, and
+  ~photon-decode-wordpiece-tokens~.  The wordpiece vocab now reserves stable
+  ~[PAD]~, ~[UNK]~, ~[BOS]~, and ~[EOS]~ IDs, uses ~[UNK]~ for unknown pieces,
+  and skips structural special tokens while decoding.  The generation benchmark
+  preview builds a small vocab over the train corpus plus prompts; current
+  preview vocab size is 57 and the short prompts round-trip as wordpiece
+  tokens.  The tokenizer is also connected to training via
+  ~photon-train-wordpiece-text~ and ~photon-train-wordpiece-text-file-split~.
+  Wordpiece models apply a stronger wordpiece-only suffix n-gram readout
+  default, so char-stream defaults remain unchanged while subword fallback can
+  use repeated piece contexts more directly.  ~make wordpiece-train~ currently
+  reports wordpiece held-out accuracy improving from 0 to 662 permil and
+  memory-off fallback at 737 permil.  ~linear-output-head-only~ now reaches
+  500 permil on the same split, up from the original 306 stream baseline and
+  from the earlier 475 wordpiece compression snapshot.  Wordpiece fallback
+  diagnostics show the split clearly: short pieces reach 816 permil fallback
+  accuracy, while long pieces improved from 64 to 612 permil and remain the
+  next target.  The same run keeps top-3 fallback at 762 permil, which is the
+  immediate ceiling for the next readout/prototype update.  Vocabularies can
+  be saved and reused with ~photon-save-vocab~ / ~photon-load-vocab~ or by
+  passing ~vocab-path~ to ~photon-load-batch-dataset-text-file~, which keeps
+  train/eval/generate on a stable token id space.  Wordpiece diagnostics now
+  include unknown and rare target counts, rare fallback accuracy, and per-miss
+  target counts; the current sample has 6 rare held-out targets and 0 permil
+  rare fallback accuracy, making rare/long pieces the next clear readout
+  target.  Batch dataset loading also records tokenizer-side token diagnostics
+  in dataset metadata, saved vocab metadata, and model checkpoints:
+  vocab size, token count, unknown-token count/permil, rare-token count/permil,
+  long/short/special token counts, and token-kind counts.  Current wordpiece
+  smoke data reports vocab size 53, unknown-token count 0, rare-token count 16,
+  and long-piece token count 31.  A post-compression wordpiece n-gram rescue
+  pass, controlled by
+  ~wordpiece-ngram-rescue-weight~ and ~wordpiece-ngram-rescue-epochs~, updates
+  the output head/prototypes for long or rare misses where the n-gram readout
+  already ranks the target in top-k.
+
+- Generation can now use ~photon-sample-index~ through
+  ~photon-model-generate~ and ~photon-model-generate-text~ options:
+
+#+begin_src elisp
+(photon-model-generate-text
+ model "photon" 24
+ '((mode . sample) (temperature . 0.9) (top-k . 8)
+   (repetition-penalty . 1.2)))
+#+end_src
+
+  Greedy remains the default when options are omitted.  ~top-p~ can be used in
+  place of or together with ~top-k~.  Trace APIs
+  ~photon-model-generate-with-trace~ and
+  ~photon-model-generate-text-with-trace~ accept the same options and record
+  the active mode/options in each trace row, so sampled generations can be
+  inspected with the same top-k/readout contribution debug records.
+
+Run training with the trainable token embedding table enabled:
+
+#+begin_src sh
+make embedding-train
+#+end_src
+
+Run training that also mutates architecture scalar parameters:
+
+#+begin_src sh
+make params-train
+#+end_src
+
+Run training with per-dimension layer gain vectors:
+
+#+begin_src sh
+make gain-train
+#+end_src
+
+Run training with layer projection matrices:
+
+#+begin_src sh
+make projection-train
+#+end_src
+
+Run a token/window cache demonstration:
+
+#+begin_src sh
+make cache-train
+#+end_src
+
+Save and load a trained model with Emacs Lisp:
+
+#+begin_src sh
+make save-load
+#+end_src
+
+Saved model files use a versioned ~photon-model-v1~ wrapper containing the
+model, library version, tokenizer metadata, vocabulary, and vector backend
+name.  ~photon-load-model~ restores the saved backend before returning the
+model, and infers ~elisp-vector~ for older checkpoints whose embedding table is
+already stored as vectors.  It still accepts the older raw model sexp format.
+
+* Test
+
+#+begin_src sh
+make test
+#+end_src
+
+* Vector Backend
+
+Vector math lives in ~lisp/photon-vector.el~ and is intentionally separated
+from the PHOTON model code.  This file is the first candidate for extraction
+into a standalone NeLisp/Emacs Lisp vector library.
+
+Vector math goes through a backend alist stored in ~photon-vector-backend~.
+Available backends:
+
+- ~list-vector~: plain list vectors, maximum compatibility
+- ~elisp-vector~: Emacs Lisp vector storage using ~aref~ / ~aset~
+- ~elisp-tensor~: vector-of-vectors matrix/tensor storage with bundled
+  tensor add/scale/map/zeros operations
+
+Each backend implements:
+
+- ~add~
+- ~scale~
+- ~dot~
+- ~matvec~
+- ~matrix-from-rows~
+- ~matrix-shape~
+- ~tensor-shape~
+- ~tensor-add~
+- ~tensor-scale~
+- ~tensor-map~
+- ~tensor-zeros~
+- ~squash~
+- ~from-list~
+- ~to-list~
+- ~fingerprint~
+- ~zeros~
+
+Install another backend with:
+
+#+begin_src elisp
+(photon-set-vector-backend MY-BACKEND)
+#+end_src
+
+External/native backends can be assembled with:
+
+#+begin_src elisp
+(photon-make-external-vector-backend
+ 'native-backend
+ '(vector matrix tensor elementwise fingerprint)
+ OPERATION-ALIST)
+#+end_src
+
+Use the built-in vector backend with:
+
+#+begin_src elisp
+(photon-use-elisp-vector-backend)
+#+end_src
+
+Use the built-in tensor backend with:
+
+#+begin_src elisp
+(photon-use-elisp-tensor-backend)
+#+end_src
+
+Compare backend matrix/tensor operations with:
+
+#+begin_src sh
+make tensor-benchmark
+PHOTON_TENSOR_BENCH_SIZE=64 PHOTON_TENSOR_BENCH_ITERS=500 make tensor-benchmark
+#+end_src
+
+Current tiny backend benchmark snapshot at size 24 / iterations 200:
+~list-vector~ matvec/tensor elapsed seconds about 0.029/0.256,
+~elisp-vector~ about 0.027/0.262, and ~elisp-tensor~ about 0.028/0.227.
+
+This keeps the current NeLisp-compatible list implementation working while
+leaving a clear replacement point for a native vector, BLAS, Torch, or future
+NeLisp tensor runtime.  Backends expose feature metadata through
+~photon-vector-backend-features~ and ~photon-vector-backend-supports-p~.
+Matrix and tensor shape/elementwise queries now go through the backend
+protocol, so a future native backend can own layout metadata without changing
+model code.
+
+* Files
+
+- ~lisp/photon.el~: PHOTON-style toy model
+- ~lisp/photon-vector.el~: vector backend protocol and built-in backends
+- ~examples/run.el~: NeLisp smoke example
+- ~examples/train.el~: online training example
+- ~examples/text-train.el~: character-level text training example
+- ~examples/file-train.el~: plain text file training example
+- ~examples/stream-train.el~: chunked file reader training example
+- ~examples/stream-diagnostics.el~: stream fallback/top-k/char-class benchmark
+- ~examples/generation-benchmark.el~: tiny text-generation quality benchmark
+- ~examples/tensor-benchmark.el~: backend matrix/tensor operation benchmark
+- ~examples/wordpiece-train.el~: wordpiece train/eval/generate example
+- ~examples/vector-train.el~: training with the ~elisp-vector~ backend
+- ~examples/minibatch-train.el~: minibatch output-head training
+- ~examples/batch-train.el~: shuffled batch split/checkpoint/resume example
+  with dataset loading and saved history
+- ~examples/serious-train.el~: configurable longer local corpus training loop
+- ~examples/benchmark.el~: learning-quality and cache ablation benchmark
+- ~examples/embedding-train.el~: trainable token embedding example
+- ~examples/params-train.el~: trainable architecture scalar parameter example
+- ~examples/gain-train.el~: per-dimension layer gain vector example
+- ~examples/projection-train.el~: layer projection matrix example
+- ~examples/cache-train.el~: token/window cache example
+- ~examples/save-load.el~: model persistence example
+- ~data/sample.txt~: tiny sample corpus
+- ~data/stream-sample.txt~: streaming reader sample corpus
+- ~data/stream-eval-sample.txt~: streaming reader held-out sample corpus
+- ~test/photon-test.el~: ERT tests for shape and deterministic behavior
+
+* Projection
+
+Layer projections are stored as rank-1 low-rank projection objects by default.
+The model applies them through ~photon-model-project~, which caches repeated
+projection results inside the model and clears the cache on parameter updates.
+Projection cache keys use ~photon-vector-fingerprint~ instead of embedding the
+full vector in the key.
+
+The output-head distillation path also owns a separate low-rank
+~output-head-projection~.  Distilled output-head prototypes keep raw states, and
+readout compares them after applying the current projection, so later projection
+updates do not invalidate stored prototype states.
+
+* Cache
+
+The model cache stores repeated token embeddings, chunk/coarse states, full
+forward windows, incremental-forward state, and prediction windows.  Cache
+entries are model-local and are cleared when trainable state changes, including
+output-head rows, embedding rows, architecture scalar parameters, layer gains,
+layer projections, target prototypes, and exact next-token transition memory.
+
+Cache usage is tracked in ~cache-stats~.  Use
+~photon-model-cache-stats~, ~photon-cache-stats-get~, and
+~photon-cache-stats-kind-get~ to inspect global and per-key-kind hit/miss
+counts.  Use ~photon-model-reset-cache-stats~ to reset counters without
+clearing cache entries.
+
+Cache size is bounded by ~cache-limit~ on the model.  The default is 512 entries.
+Use ~photon-model-set-cache-limit~ to change the limit; older entries are
+trimmed first.
+
+* Next Milestones
+
+- replace approximate low-rank projection updates with principled gradient rules
+- replace toy weighted loss updates with principled gradient rules
+- add a concrete native or external vector/tensor backend behind the backend
+  protocol
+- add a richer generation benchmark for incremental cache behavior

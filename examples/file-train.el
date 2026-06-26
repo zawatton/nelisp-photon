@@ -1,0 +1,10 @@
+(load "lisp/photon.el")
+
+(let* ((result (photon-train-text-file "data/sample.txt" 2 4 2 2 0.20))
+       (model (cdr (assq 'model result)))
+       (generated (photon-model-generate-text model "ne" 4)))
+  (list (cons 'source "data/sample.txt")
+        (cons 'vocab-size (length (cdr (assq 'vocab result))))
+        (cons 'before (cdr (assq 'before result)))
+        (cons 'after (cdr (assq 'after result)))
+        (cons 'generated generated)))

@@ -1,0 +1,3 @@
+abcabc photon stream abcabc photon stream abcabc photon stream
+chunked text keeps the reader small while training pairs continue
+abcabc photon stream abcabc photon stream abcabc photon stream
