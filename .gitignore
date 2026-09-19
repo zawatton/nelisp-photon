@@ -1,4 +1,5 @@
 /target/
-/*.elc
-/*~
+*.elc
+*.eln
+*~
 
