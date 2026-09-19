@@ -284,6 +284,162 @@
                  generations '(distinct-2 distinct-permil)))
           (cons 'generations generations))))
 
+(defun photon-generation-benchmark-options-with-seed (options seed)
+  (cons (cons 'seed seed)
+        (assq-delete-all 'seed (copy-sequence options))))
+
+(defun photon-generation-benchmark-sampling-row-summary (row)
+  (list (cons 'name (cdr (assq 'name row)))
+        (cons 'options (cdr (assq 'options row)))
+        (cons 'average-repeated-token-permil
+              (cdr (assq 'average-repeated-token-permil row)))
+        (cons 'average-collapse-score
+              (cdr (assq 'average-collapse-score row)))
+        (cons 'average-distinct-1-permil
+              (cdr (assq 'average-distinct-1-permil row)))
+        (cons 'average-distinct-2-permil
+              (cdr (assq 'average-distinct-2-permil row)))))
+
+(defun photon-generation-benchmark-sampling-row-seeds
+    (name model corpus prompts steps options seeds)
+  (let ((rows nil)
+        (walk seeds))
+    (while walk
+      (setq rows
+            (cons
+             (photon-generation-benchmark-sampling-row-summary
+              (photon-generation-benchmark-sampling-row
+               name model corpus prompts steps
+               (photon-generation-benchmark-options-with-seed
+                options (car walk))))
+             rows))
+      (setq walk (cdr walk)))
+    (setq rows (nreverse rows))
+    (list (cons 'name name)
+          (cons 'seeds seeds)
+          (cons 'options options)
+          (cons 'average-repeated-token-permil
+                (photon-generation-benchmark-average-field
+                 rows '(average-repeated-token-permil)))
+          (cons 'average-collapse-score
+                (photon-generation-benchmark-average-field
+                 rows '(average-collapse-score)))
+          (cons 'average-distinct-1-permil
+                (photon-generation-benchmark-average-field
+                 rows '(average-distinct-1-permil)))
+          (cons 'average-distinct-2-permil
+                (photon-generation-benchmark-average-field
+                 rows '(average-distinct-2-permil)))
+          (cons 'seed-summaries rows))))
+
+(defun photon-generation-benchmark-sampling-quality-score (row)
+  (- (cdr (assq 'average-distinct-2-permil row))
+     (cdr (assq 'average-collapse-score row))))
+
+(defun photon-generation-benchmark-bias-options (ngram-weight repeat-weight)
+  (let ((options '((mode . sample) (temperature . 0.85) (top-k . 5)
+                   (repetition-penalty . 1.10))))
+    (when (> ngram-weight 0.0)
+      (setq options (append options
+                            (list (cons 'ngram-bias ngram-weight)))))
+    (when (> repeat-weight 0.0)
+      (setq options (append options
+                            (list (cons 'repeat-ngram-bias
+                                        repeat-weight)))))
+    options))
+
+(defun photon-generation-benchmark-sampling-weight-sweep
+    (model corpus prompts steps seeds ngram-weights repeat-weights)
+  (let ((rows nil)
+        (ngram-walk ngram-weights))
+    (while ngram-walk
+      (let ((repeat-walk repeat-weights)
+            (ngram-weight (car ngram-walk)))
+        (while repeat-walk
+          (let* ((repeat-weight (car repeat-walk))
+                 (row (photon-generation-benchmark-sampling-row-seeds
+                       (intern (format "ngram-%.2f-repeat-%.2f"
+                                       ngram-weight repeat-weight))
+                       model corpus prompts steps
+                       (photon-generation-benchmark-bias-options
+                        ngram-weight repeat-weight)
+                       seeds)))
+            (setq row
+                  (append row
+                          (list
+                           (cons 'ngram-bias ngram-weight)
+                           (cons 'repeat-ngram-bias repeat-weight)
+                           (cons 'quality-score
+                                 (photon-generation-benchmark-sampling-quality-score
+                                  row)))))
+            (setq rows (cons row rows)))
+          (setq repeat-walk (cdr repeat-walk))))
+      (setq ngram-walk (cdr ngram-walk)))
+    (let* ((ordered (sort (copy-sequence rows)
+                          (lambda (left right)
+                            (> (cdr (assq 'quality-score left))
+                               (cdr (assq 'quality-score right)))))))
+      (list (cons 'seeds seeds)
+            (cons 'ngram-weights ngram-weights)
+            (cons 'repeat-ngram-weights repeat-weights)
+            (cons 'best (car ordered))
+            (cons 'rows ordered)))))
+
+(defun photon-generation-benchmark-sampling-profile-validation
+    (model train-corpus eval-corpus train-prompts eval-prompts steps seeds)
+  (let ((profiles
+         (list
+          (list (cons 'name 'baseline)
+                (cons 'options
+                      '((mode . sample) (temperature . 0.85) (top-k . 5)
+                        (repetition-penalty . 1.10))))
+          (list (cons 'name 'recommended)
+                (cons 'options
+                      '((mode . sample) (temperature . 0.85) (top-k . 5)
+                        (repetition-penalty . 1.10)
+                        (ngram-bias . 0.25)
+                        (repeat-ngram-bias . 0.35))))
+          (list (cons 'name 'aggressive)
+                (cons 'options
+                      '((mode . sample) (temperature . 0.85) (top-k . 5)
+                        (repetition-penalty . 1.10)
+                        (ngram-bias . 0.40)
+                        (repeat-ngram-bias . 0.35)))))))
+    (list
+     (cons 'seeds seeds)
+     (cons 'train-prompts train-prompts)
+     (cons 'eval-prompts eval-prompts)
+     (cons
+      'train
+      (mapcar
+       (lambda (profile)
+         (let ((row (photon-generation-benchmark-sampling-row-seeds
+                     (cdr (assq 'name profile))
+                     model train-corpus train-prompts steps
+                     (cdr (assq 'options profile))
+                     seeds)))
+           (append row
+                   (list
+                    (cons 'quality-score
+                          (photon-generation-benchmark-sampling-quality-score
+                           row))))))
+       profiles))
+     (cons
+      'eval
+      (mapcar
+       (lambda (profile)
+         (let ((row (photon-generation-benchmark-sampling-row-seeds
+                     (cdr (assq 'name profile))
+                     model eval-corpus eval-prompts steps
+                     (cdr (assq 'options profile))
+                     seeds)))
+           (append row
+                   (list
+                    (cons 'quality-score
+                          (photon-generation-benchmark-sampling-quality-score
+                           row))))))
+       profiles)))))
+
 (defun photon-generation-benchmark-average-field (records path)
   (let ((total 0.0)
         (count 0))
@@ -345,6 +501,7 @@
        (train-path (expand-file-name "../data/stream-sample.txt" root))
        (eval-path (expand-file-name "../data/stream-eval-sample.txt" root))
        (corpus (photon-read-text-file train-path))
+       (eval-corpus (photon-read-text-file eval-path))
        (context-size 6)
        (chunk-bytes 16)
        (result (photon-train-text-file-stream-split
@@ -355,6 +512,7 @@
          model eval-path (cdr (assq 'vocab result))
          context-size chunk-bytes))
        (prompts '("abc" "ph" "ne" "stream"))
+       (eval-prompts '("reader" "heldout" "accuracy" "checked"))
        (char-generations
         (mapcar
          (lambda (prompt)
@@ -387,11 +545,72 @@
          (photon-generation-benchmark-sampling-row
           'temperature-top-k wordpiece-model corpus prompts 24
           '((mode . sample) (temperature . 0.85) (top-k . 5)
-            (repetition-penalty . 1.10)))
+            (repetition-penalty . 1.10) (seed . 17)))
          (photon-generation-benchmark-sampling-row
           'temperature-top-p wordpiece-model corpus prompts 24
           '((mode . sample) (temperature . 0.95) (top-p . 0.85)
-            (repetition-penalty . 1.20))))))
+            (repetition-penalty . 1.20) (seed . 17)))))
+       (sampling-bias-ablation
+        (list
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-baseline wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-ngram-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (ngram-bias . 0.40))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-gated-ngram-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (ngram-bias . 0.40)
+            (ngram-bias-gate-margin . 0.0))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-adaptive-ngram-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (ngram-bias . 0.40)
+            (ngram-bias-repeat-scale . 0.0))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-repeat-ngram-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (repeat-ngram-bias . 0.35))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-adaptive-repeat-ngram-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (repeat-ngram-bias . 0.35)
+            (repeat-ngram-bias-min-count . 2.0))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'top-k-ngram-and-repeat-bias wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10) (ngram-bias . 0.40)
+            (repeat-ngram-bias . 0.35))
+          '(11 17 23))))
+       (sampling-weight-sweep
+        (photon-generation-benchmark-sampling-weight-sweep
+         wordpiece-model corpus prompts 24 '(11 17 23)
+         '(0.0 0.25 0.40) '(0.0 0.20 0.35)))
+       (sampling-profile-validation
+        (photon-generation-benchmark-sampling-profile-validation
+         wordpiece-model corpus eval-corpus prompts eval-prompts
+         24 '(11 17 23)))
+       (sampling-seed-comparison
+        (list
+         (photon-generation-benchmark-sampling-row-seeds
+          'temperature-top-k wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.85) (top-k . 5)
+            (repetition-penalty . 1.10))
+          '(11 17 23))
+         (photon-generation-benchmark-sampling-row-seeds
+          'temperature-top-p wordpiece-model corpus prompts 24
+          '((mode . sample) (temperature . 0.95) (top-p . 0.85)
+            (repetition-penalty . 1.20))
+          '(11 17 23)))))
   (prin1
    (list (cons 'train-path train-path)
          (cons 'eval-path eval-path)
@@ -415,6 +634,10 @@
                (list (cons 'summary
                            (cdr (assq 'summary wordpiece-diagnostics)))))
          (cons 'sampling-comparison sampling-comparison)
+         (cons 'sampling-bias-ablation sampling-bias-ablation)
+         (cons 'sampling-weight-sweep sampling-weight-sweep)
+         (cons 'sampling-profile-validation sampling-profile-validation)
+         (cons 'sampling-seed-comparison sampling-seed-comparison)
          (cons 'wordpiece-generations wordpiece-generations)
          (cons 'generations char-generations)))
   (princ "\n"))

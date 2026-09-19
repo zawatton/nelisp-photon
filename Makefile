@@ -1,7 +1,7 @@
 NELISP ?= ../nelisp/target/nelisp
 EMACS ?= emacs
 
-.PHONY: test smoke nelisp-smoke train text-train file-train stream-train stream-diagnostics wordpiece-train vector-train minibatch-train batch-train serious-train embedding-train params-train gain-train projection-train cache-train benchmark generation-benchmark tensor-benchmark save-load
+.PHONY: test smoke nelisp-smoke train text-train file-train stream-train stream-diagnostics wordpiece-train vector-train minibatch-train batch-train serious-train embedding-train params-train gain-train projection-train cache-train benchmark generation-benchmark large-readout-smoke-benchmark large-readout-mid-benchmark large-readout-mid-ablation large-readout-benchmark large-generation-benchmark large-streaming-eval photon-cli-train photon-cli-generate tensor-benchmark save-load
 
 test:
 	$(EMACS) -Q --batch -L lisp -l test/photon-test.el -f ert-run-tests-batch-and-exit
@@ -61,6 +61,30 @@ benchmark:
 
 generation-benchmark:
 	$(EMACS) -Q --batch -L lisp --script examples/generation-benchmark.el
+
+large-readout-smoke-benchmark:
+	$(EMACS) -Q --batch -L lisp --script examples/large-readout-smoke-benchmark.el
+
+large-readout-mid-benchmark:
+	$(EMACS) -Q --batch -L lisp --script examples/large-readout-mid-benchmark.el
+
+large-readout-mid-ablation:
+	$(EMACS) -Q --batch -L lisp --script examples/large-readout-mid-ablation.el
+
+large-readout-benchmark:
+	$(EMACS) -Q --batch -L lisp --script examples/large-readout-benchmark.el
+
+large-generation-benchmark:
+	$(EMACS) -Q --batch -L lisp --script examples/large-generation-benchmark.el
+
+large-streaming-eval:
+	$(NELISP) --load examples/large-streaming-eval.el
+
+photon-cli-train:
+	$(NELISP) --eval '(progn (setq photon-cli-command "train") (load "examples/photon-cli.el"))'
+
+photon-cli-generate:
+	$(NELISP) --eval '(progn (setq photon-cli-command "generate" photon-cli-model-path "target/photon-large-model.el" photon-cli-prompt "photon stream" photon-cli-steps "32") (load "examples/photon-cli.el"))'
 
 tensor-benchmark:
 	$(EMACS) -Q --batch -L lisp --script examples/tensor-benchmark.el

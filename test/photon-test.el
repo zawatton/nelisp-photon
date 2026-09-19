@@ -253,15 +253,160 @@
     (should (= (photon-model-param-get model 'context-anchor-recency) 0.70))
     (should (= (photon-model-param-get model 'context-anchor-prefix-weight) 1.0))
     (should (= (photon-model-param-get model 'wordpiece-context-anchor-ngram-weight) 6.0))
+    (should (= (photon-model-param-get model 'wordpiece-final-context-anchor-ngram-weight) 16.0))
+    (should (= (photon-model-param-get model 'readout-logit-temperature) 1.0))
+    (should (= (photon-model-param-get model 'wordpiece-final-readout-temperature) 8.0))
     (should (= (photon-model-param-get model 'wordpiece-long-token-update-weight) 0.35))
     (should (= (photon-model-param-get model 'wordpiece-rare-token-update-weight) 0.50))
     (should (= (photon-model-param-get model 'wordpiece-update-scale-max) 2.50))
     (should (= (photon-model-param-get model 'wordpiece-readout-bias-enabled) 0.0))
     (should (= (photon-model-param-get model 'wordpiece-long-readout-bias-weight) 0.75))
     (should (= (photon-model-param-get model 'wordpiece-rare-readout-bias-weight) 0.50))
+    (should (= (photon-model-param-get model 'wordpiece-token-readout-bias-weight) 0.35))
     (should (= (photon-model-param-get model 'wordpiece-readout-bias-max) 2.50))
     (should (= (photon-model-param-get model 'wordpiece-ngram-rescue-weight) 1.00))
     (should (= (photon-model-param-get model 'wordpiece-ngram-rescue-epochs) 4.0))
+    (should (= (photon-model-param-get model 'wordpiece-final-ngram-rescue-weight) 1.00))
+    (should (= (photon-model-param-get model 'wordpiece-final-ngram-rescue-epochs) 3.0))
+    (should (= (photon-model-param-get model 'wordpiece-long-rare-readout-rescue-weight) 0.75))
+    (should (= (photon-model-param-get model 'wordpiece-long-rare-readout-rescue-epochs) 2.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-long-teacher-state-path-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-continuation-teacher-state-path-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-teacher-state-path-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-teacher-token-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-teacher-context-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-teacher-anchor-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-boundary-readout-enabled)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-boundary-readout-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-boundary-readout-size)
+               4.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-boundary-ngram-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-full-readout-distill-start-long-boundary-teacher-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-classifier-enabled)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'wordpiece-start-long-classifier-learning-rate-scale)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'wordpiece-start-long-classifier-candidate-search-enabled)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'wordpiece-start-long-classifier-candidate-learning-rate)
+               0.20))
+    (should (= (photon-model-param-get
+                model
+                'wordpiece-start-long-classifier-candidate-top-k)
+               10.0))
+    (should (= (photon-model-param-get
+                model
+                'wordpiece-start-long-classifier-candidate-margin)
+               0.10))
+    (should (= (photon-model-param-get
+                model
+                'wordpiece-start-long-classifier-candidate-limit)
+               64.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-full-readout-distill-start-long-classifier-teacher-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-full-readout-distill-start-long-ngram-teacher-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-start-long-positive-distill-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-start-long-positive-distill-epochs)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-start-long-positive-distill-top-k)
+               3.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-projected-prototype-distill-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-projected-prototype-distill-epochs)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-projected-prototype-distill-top-k)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-prototype-merge-candidate-search-enabled)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-prototype-merge-candidate-limit)
+               64.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-rival-negative-distill-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-rival-negative-distill-epochs)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-rival-negative-distill-top-k)
+               3.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-rival-negative-distill-rivals)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-bias-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-epochs)
+               1.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-top-k)
+               3.0))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-margin)
+               0.10))
+    (should (= (photon-model-param-get
+                model
+                'output-head-start-long-same-shape-margin-distill-adaptive-bias-max)
+               0.0))
     (should (= (photon-model-param-get model 'context-anchor-ngram-contrastive-weight) 0.25))
     (should (= (photon-model-param-get model 'context-anchor-weight-max) 1.0))
     (should (= (photon-model-param-get model 'char-class-bias-weight) 0.75))
@@ -278,15 +423,101 @@
     (should (= (photon-model-param-get model 'wordpiece-generation-continuation-run-bias-weight) 1.50))
     (should (= (photon-model-param-get model 'wordpiece-generation-recent-token-bias-weight) 0.40))
     (should (= (photon-model-param-get model 'wordpiece-generation-recent-token-window) 8.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-ngram-bias-weight) 0.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-ngram-bias-gate-margin) -1.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-ngram-bias-repeat-scale) 1.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-ngram-bias-repeat-window) 24.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-repeat-ngram-bias-weight) 0.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-repeat-ngram-bias-min-count) 1.0))
+    (should (= (photon-model-param-get model 'wordpiece-generation-repeat-ngram-window) 24.0))
     (should (= (photon-model-param-get model 'output-head-aux-update-weight) 0.50))
     (should (= (photon-model-param-get model 'output-head-anchor-distill-weight) 2.50))
     (should (= (photon-model-param-get model 'output-head-cluster-distill-weight) 1.00))
     (should (= (photon-model-param-get model 'output-head-cluster-distill-epochs) 5.0))
     (should (= (photon-model-param-get model 'output-head-prototype-weight) 8.0))
-    (should (= (photon-model-param-get model 'output-head-prototype-limit) 8.0))
+    (should (= (photon-model-param-get model 'output-head-prototype-limit) 32.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-support-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-support-limit)
+               3.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-negative-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-negative-limit)
+               32.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-long-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-short-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-special-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-start-long-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-continuation-long-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-start-short-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-continuation-short-piece-weight)
+               1.0))
+    (should (= (photon-model-param-get model 'output-head-prototype-diverse-trim-enabled) 0.0))
+    (should (= (photon-model-param-get model 'output-head-prototype-projection-enabled) 1.0))
+    (should (= (photon-model-param-get model 'wordpiece-final-output-head-prototype-projection-enabled) 0.0))
     (should (= (photon-model-param-get model 'output-head-linear-readout-weight) 0.0))
+    (should (= (photon-model-param-get model 'wordpiece-final-output-head-linear-readout-weight) 1.0))
     (should (= (photon-model-param-get model 'output-head-compress-weight) 0.40))
     (should (= (photon-model-param-get model 'output-head-compress-epochs) 12.0))
+    (should (= (photon-model-param-get model 'output-head-token-readout-distill-weight) 0.50))
+    (should (= (photon-model-param-get model 'output-head-token-readout-distill-epochs) 3.0))
+    (should (= (photon-model-param-get model 'output-head-full-readout-distill-weight) 2.00))
+    (should (= (photon-model-param-get model 'output-head-full-readout-distill-epochs) 8.0))
+    (should (= (photon-model-param-get model 'output-head-full-readout-distill-wordpiece-scale-enabled) 0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-full-readout-distill-start-long-scale)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-full-readout-distill-continuation-long-scale)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-full-readout-distill-start-short-scale)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-full-readout-distill-continuation-short-scale)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-full-readout-distill-selection-start-long-weight)
+               0.0))
+    (should (= (photon-model-param-get model 'output-head-prototype-readout-distill-epochs) 1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-distill-epochs)
+               1.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-bias-weight)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-token-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-context-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-anchor-mix)
+               0.0))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-contrastive-rate)
+               0.02))
+    (should (= (photon-model-param-get
+                model 'output-head-prototype-ngram-long-state-path-rate)
+               0.0))
     (should (= (photon-model-param-get model 'output-head-ngram-distill-weight) 0.50))
     (should (= (photon-model-param-get model 'prototype-ngram-distill-weight) 1.00))
     (should (= (photon-model-param-get model 'output-head-state-cluster-readout-weight) 1.0))
@@ -652,6 +883,17 @@
     (should (eq (photon-wordpiece-token-kind vocab 5) 'long-piece))
     (should (eq (photon-wordpiece-token-kind vocab 6) 'long-piece))
     (should (photon-wordpiece-token-continuation-p vocab 6))
+    (should (eq (photon-wordpiece-token-shape vocab 5)
+                'start-long-piece))
+    (should (eq (photon-wordpiece-token-shape vocab 6)
+                'continuation-long-piece))
+    (should
+     (photon-wordpiece-start-long-teacher-target-p
+      (let ((model (photon-make-model (photon-make-config 7 2 2 1))))
+        (photon-model-metadata-put model 'vocab vocab)
+        (photon-model-metadata-put model 'tokenizer 'wordpiece)
+        model)
+      5))
     (should (= (photon-wordpiece-token-length vocab 6) 3))))
 
 (ert-deftest photon-wordpiece-update-scale-boosts-long-rare-tokens ()
@@ -667,6 +909,1374 @@
     (photon-model-metadata-put model 'tokenizer 'char)
     (should (= (photon-wordpiece-update-scale model long-token) 1.0))))
 
+(ert-deftest photon-wordpiece-long-teacher-state-path-updates-training-state ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (report nil)
+         (before-prototypes nil)
+         (before-head nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-long-teacher-state-path-weight 0.50)
+    (photon-update-context-anchor-ngram-weighted model context target 2.0)
+    (setq report (photon-loss-report model context target))
+    (setq before-prototypes
+          (copy-tree (photon-model-output-head-prototypes model)))
+    (setq before-head (copy-tree (photon-model-output-head model)))
+    (should
+     (photon-update-wordpiece-long-teacher-state-path
+      model context target report 0.10))
+    (should-not
+     (equal before-prototypes
+            (photon-model-output-head-prototypes model)))
+    (should-not (equal before-head (photon-model-output-head model)))))
+
+(ert-deftest photon-wordpiece-continuation-teacher-state-path-updates-training-state ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (report nil)
+         (before-prototypes nil)
+         (before-head nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "pho" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-continuation-teacher-state-path-weight 0.50)
+    (photon-update-context-anchor-ngram-weighted model context target 2.0)
+    (setq report (photon-loss-report model context target))
+    (setq before-prototypes
+          (copy-tree (photon-model-output-head-prototypes model)))
+    (setq before-head (copy-tree (photon-model-output-head model)))
+    (should
+     (photon-update-wordpiece-continuation-teacher-state-path
+      model context target report 0.10))
+    (should-not
+     (equal before-prototypes
+            (photon-model-output-head-prototypes model)))
+    (should-not (equal before-head (photon-model-output-head model)))))
+
+(ert-deftest photon-wordpiece-start-long-teacher-state-path-updates-training-state ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (report nil)
+         (before-prototypes nil)
+         (before-head nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-start-long-teacher-state-path-weight 0.50)
+    (photon-update-context-anchor-ngram-weighted model context target 2.0)
+    (setq report (photon-loss-report model context target))
+    (setq before-prototypes
+          (copy-tree (photon-model-output-head-prototypes model)))
+    (setq before-head (copy-tree (photon-model-output-head model)))
+    (should
+     (photon-update-wordpiece-start-long-teacher-state-path
+      model context target report 0.10))
+    (should-not
+     (equal before-prototypes
+            (photon-model-output-head-prototypes model)))
+    (should-not (equal before-head (photon-model-output-head model)))))
+
+(ert-deftest photon-wordpiece-start-long-teacher-state-can-mix-boundary-targets ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (report nil)
+         (state nil)
+         (baseline nil)
+         (mixed nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (setq report (photon-loss-report model context target))
+    (setq state (cdr (assq 'state report)))
+    (setq baseline
+          (photon-wordpiece-start-long-teacher-state
+           model context state target))
+    (photon-model-param-set
+     model 'wordpiece-start-long-teacher-token-mix 0.50)
+    (photon-model-param-set
+     model 'wordpiece-start-long-teacher-context-mix 0.25)
+    (photon-model-param-set
+     model 'wordpiece-start-long-teacher-anchor-mix 0.25)
+    (setq mixed
+          (photon-wordpiece-start-long-teacher-state
+           model context state target))
+    (should-not (equal baseline mixed))))
+
+(ert-deftest photon-start-long-boundary-readout-learns-start-long-token ()
+  (let* ((config (photon-make-config 8 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (start-target 6)
+         (continuation-target 7)
+         (logits nil)
+         (components nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-start-long-boundary-readout-enabled 1.0)
+    (photon-model-param-set
+     model 'wordpiece-start-long-boundary-readout-weight 4.0)
+    (photon-model-param-set
+     model 'wordpiece-start-long-boundary-ngram-mix 1.0)
+    (photon-update-start-long-boundary-readout model context start-target)
+    (photon-update-start-long-boundary-readout
+     model context continuation-target)
+    (photon-update-context-anchor-ngram-weighted
+     model context start-target 2.0)
+    (setq logits
+          (photon-start-long-boundary-readout-logits model context))
+    (should (> (nth start-target logits) 0.0))
+    (should (= (nth continuation-target logits) 0.0))
+    (setq components
+          (photon-model-readout-components
+           model
+           (cdr (assq 'state (photon-loss-report model context start-target)))
+           context))
+    (should (assq 'start-long-boundary-readout components))
+    (should (> (nth start-target
+                    (cdr (assq 'start-long-boundary-readout components)))
+               0.0))))
+
+(ert-deftest photon-start-long-boundary-teacher-is-distill-only ()
+  (let* ((config (photon-make-config 8 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (state nil)
+         (components nil)
+         (full nil)
+         (teacher nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-start-long-boundary-readout-enabled 1.0)
+    (photon-model-param-set
+     model 'wordpiece-start-long-boundary-ngram-mix 1.0)
+    (photon-model-param-set
+     model
+     'output-head-full-readout-distill-start-long-boundary-teacher-weight
+     4.0)
+    (photon-update-start-long-boundary-readout model context target)
+    (photon-update-context-anchor-ngram-weighted model context target 2.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (setq components (photon-model-readout-components model state context))
+    (setq full (cdr (assq 'full components)))
+    (setq teacher (cdr (assq 'start-long-boundary-teacher components)))
+    (should (assq 'start-long-boundary-teacher components))
+    (should (> (nth target teacher) (nth target full)))))
+
+(ert-deftest photon-start-long-ngram-teacher-is-distill-only ()
+  (let* ((config (photon-make-config 8 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (continuation 7)
+         (state nil)
+         (components nil)
+         (full nil)
+         (teacher nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model
+     'output-head-full-readout-distill-start-long-ngram-teacher-weight
+     4.0)
+    (photon-update-context-anchor-ngram-weighted model context target 2.0)
+    (photon-update-context-anchor-ngram-weighted
+     model context continuation 2.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (setq components (photon-model-readout-components model state context))
+    (setq full (cdr (assq 'full components)))
+    (setq teacher (cdr (assq 'start-long-ngram-teacher components)))
+    (should (assq 'start-long-ngram-teacher components))
+    (should (> (nth target teacher) (nth target full)))
+    (should (= (nth continuation teacher) (nth continuation full)))))
+
+(ert-deftest photon-start-long-classifier-learns-start-long-token ()
+  (let* ((config (photon-make-config 9 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 6)
+         (state nil)
+         (before nil)
+         (after nil)
+         (components nil)
+         (teacher nil)
+         (full nil)
+         (readout nil)
+         (unmixed-full nil)
+         (mixed-full nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "photo" "world" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-start-long-classifier-enabled 1.0)
+    (photon-model-param-set
+     model
+     'output-head-full-readout-distill-start-long-classifier-teacher-weight
+     4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (setq before (photon-model-start-long-classifier-logits model state))
+    (photon-update-start-long-classifier
+     model state 7 target 0.20)
+    (setq after (photon-model-start-long-classifier-logits model state))
+    (should (> (nth target after) (nth target before)))
+    (should (= (nth 8 after) -1000.0))
+    (setq components (photon-model-readout-components model state context))
+    (setq full (cdr (assq 'full components)))
+    (setq teacher (cdr (assq 'start-long-classifier-teacher components)))
+    (should (assq 'start-long-classifier components))
+    (should (assq 'start-long-classifier-readout components))
+    (should (assq 'start-long-classifier-teacher components))
+    (should (> (nth target teacher) (nth target full)))
+    (setq unmixed-full full)
+    (photon-model-param-set
+     model 'wordpiece-start-long-classifier-readout-weight 0.25)
+    (setq components (photon-model-readout-components model state context))
+    (setq mixed-full (cdr (assq 'full components)))
+    (setq readout (cdr (assq 'start-long-classifier-readout components)))
+    (should (> (nth target readout) 0.0))
+    (should (= (nth 8 readout) 0.0))
+    (should (> (nth target mixed-full)
+               (nth target unmixed-full)))))
+
+(ert-deftest photon-start-long-classifier-candidate-search-accepts-improvement ()
+  (let* ((config (photon-make-config 9 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5))
+         (target 7)
+         (rival 6)
+         (tokens (append context (list target)))
+         (state nil)
+         (before nil)
+         (after nil)
+         (result nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "photo" "world" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'wordpiece-start-long-classifier-enabled 1.0)
+    (photon-model-param-set
+     model 'wordpiece-start-long-classifier-candidate-learning-rate 0.50)
+    (photon-model-param-set
+     model 'wordpiece-start-long-classifier-candidate-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-start-long-classifier model state target rival 0.50)
+    (setq before (photon-model-start-long-classifier-logits model state))
+    (setq result
+          (photon-start-long-classifier-candidate-search
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)))
+    (setq after (photon-model-start-long-classifier-logits model state))
+    (should (= (cdr (assq 'candidate-count result)) 1))
+    (should (= (cdr (assq 'tested result)) 1))
+    (should (= (cdr (assq 'accepted result)) 1))
+    (should (= (cdr (assq 'updated result)) 1))
+    (should (> (nth target after) (nth target before)))
+    (should (> (cdr (assq 'best-start-long-classifier-accuracy-permil
+                          result))
+               (cdr (assq 'accuracy-permil
+                          (cdr (assq 'initial-start-long-classifier
+                                     result))))))))
+
+(ert-deftest photon-start-long-positive-distill-uses-ngram-hit ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (tokens (append context (list target)))
+         (state nil)
+         (before-linear nil)
+         (after-linear nil)
+         (before-prototype nil)
+         (after-prototype nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-start-long-positive-distill-top-k 3.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (setq before-linear (photon-model-output-head-logits model state))
+    (setq before-prototype
+          (photon-model-output-head-prototype-logits model state))
+    (setq report
+          (photon-start-long-positive-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)
+           0.25))
+    (setq after-linear (photon-model-output-head-logits model state))
+    (setq after-prototype
+          (photon-model-output-head-prototype-logits model state))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'prototype-updated report)) 1))
+    (should (> (nth target after-linear) (nth target before-linear)))
+    (should (> (nth target after-prototype) (nth target before-prototype)))))
+
+(ert-deftest photon-start-long-projected-prototype-distill-stores-projected-state ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (tokens (append context (list target)))
+         (state nil)
+         (before nil)
+         (after nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-start-long-projected-prototype-distill-top-k 1.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-projection model state 0.10)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (setq report
+          (photon-start-long-projected-prototype-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)))
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'projected-prototype-updated report)) 1))
+    (should (> (nth target after) (nth target before)))))
+
+(ert-deftest photon-start-long-prototype-merge-updates-target-prototype ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before-prototypes nil)
+         (after-prototypes nil)
+         (before-logits nil)
+         (after-logits nil)
+         (before-target-bias nil)
+         (after-target-bias nil)
+         (before-rival-bias nil)
+         (after-rival-bias nil)
+         (negative-prototypes nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rate 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-top-k 10.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-margin 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-target-bias-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-bias-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-score-bonus-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-line-search-step
+     0.05)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-line-search-max
+     0.10)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-negative-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rivals 1.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype
+     model
+     (photon-vector-squash
+      (photon-vector-add state
+                         (photon-vector-scale
+                          0.40
+                          (photon-model-token-embedding model rival))))
+     target)
+    (photon-update-output-head-prototype
+     model
+     (photon-vector-squash
+      (photon-vector-add state
+                         (photon-vector-scale
+                          0.30
+                          (photon-model-token-embedding model rival))))
+     rival)
+    (setq before-prototypes
+          (copy-tree (photon-model-output-head-prototypes model)))
+    (setq before-logits
+          (photon-model-output-head-prototype-logits model state))
+    (setq before-target-bias
+          (or (nth target
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (setq before-rival-bias
+          (or (nth rival
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (setq report
+          (photon-start-long-prototype-merge-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)))
+    (setq after-prototypes
+          (photon-model-output-head-prototypes model))
+    (setq after-logits
+          (photon-model-output-head-prototype-logits model state))
+    (setq after-target-bias
+          (or (nth target
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (setq after-rival-bias
+          (or (nth rival
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (setq negative-prototypes
+          (photon-model-output-head-negative-prototypes model))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'merged report)) 1))
+    (should (= (cdr (assq 'target-bias-updated report)) 1))
+    (should (= (cdr (assq 'rival-bias-updated report)) 1))
+    (should (= (cdr (assq 'rival-negative-updated report)) 1))
+    (should (> (length (cdr (assq target after-prototypes)))
+               (length (cdr (assq target before-prototypes)))))
+    (should (consp (cdr (assq rival negative-prototypes))))
+    (should (> after-target-bias before-target-bias))
+    (should (< after-rival-bias before-rival-bias))
+    (should (> (nth target after-logits) (nth target before-logits)))))
+
+(ert-deftest photon-start-long-prototype-merge-candidate-search-accepts-improvement ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before-output-head nil)
+         (result nil)
+         (negative-prototypes nil)
+         (target-prototypes nil)
+         (after-output-head nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rate 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-top-k 10.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-margin 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-target-bias-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-bias-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-score-bonus-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-dominant-rival-bias-rate
+     0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-dominant-rival-min-count
+     1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-state-separation-rate
+     0.25)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-dense-head-rate
+     0.02)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-line-search-step
+     0.05)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-line-search-max
+     0.10)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rival-negative-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-prototype-merge-rivals 1.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq before-output-head (copy-tree (photon-model-output-head model)))
+    (setq result
+          (photon-start-long-prototype-merge-candidate-search
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)))
+    (setq negative-prototypes
+          (photon-model-output-head-negative-prototypes model))
+    (setq target-prototypes
+          (cdr (assq target
+                     (photon-model-output-head-prototypes model))))
+    (setq after-output-head (photon-model-output-head model))
+    (should (= (cdr (assq 'candidate-count result)) 1))
+    (should (= (cdr (assq 'tested result)) 1))
+    (should (= (cdr (assq 'accepted result)) 1))
+    (should (= (cdr (assq 'target-bias-updated result)) 1))
+    (should (= (cdr (assq 'rival-bias-updated result)) 1))
+    (should (= (cdr (assq 'score-bonus-updated result)) 1))
+    (should (= (cdr (assq 'dominant-rival-bias-updated result)) 1))
+    (should (= (cdr (assq 'state-separation-updated result)) 1))
+    (should (= (cdr (assq 'dense-head-updated result)) 1))
+    (should (= (cdr (assq 'rival-negative-updated result)) 1))
+    (should (assq rival (cdr (assq 'dominant-rivals result))))
+    (should (> (cdr (assq 'line-search-attempted result)) 0))
+    (should (consp (cdr (assq rival negative-prototypes))))
+    (should (> (length target-prototypes) 1))
+    (should-not (equal before-output-head after-output-head))
+    (should (> (cdr (assq 'best-start-long-prototype-accuracy-permil result))
+               (cdr (assq 'accuracy-permil
+                          (cdr (assq 'initial-start-long-prototype
+                                     result))))))))
+
+(ert-deftest photon-start-long-projection-separation-updates-projection ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before-projection nil)
+         (after-projection nil)
+         (before-logits nil)
+         (after-logits nil)
+         (before-target-score-bonus nil)
+         (after-target-score-bonus nil)
+         (before-rival-bias nil)
+         (after-rival-bias nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-rate 0.05)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-top-k 10.0)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-margin 1.00)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-score-bonus-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-rival-bias-rate 0.20)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state target)
+    (photon-update-output-head-prototype
+     model
+     (photon-vector-squash
+      (photon-vector-add state
+                         (photon-vector-scale
+                          0.30
+                          (photon-model-token-embedding model rival))))
+     rival)
+    (setq before-logits
+          (photon-model-output-head-prototype-logits model state))
+    (setq before-target-score-bonus
+          (or (nth target
+                   (photon-model-output-head-prototype-score-bonus model))
+              0.0))
+    (setq before-rival-bias
+          (or (nth rival
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (setq before-projection (copy-tree
+                             (photon-model-output-head-projection model)))
+    (setq report
+          (photon-start-long-projection-separation-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)))
+    (setq after-projection (photon-model-output-head-projection model))
+    (setq after-logits
+          (photon-model-output-head-prototype-logits model state))
+    (setq after-target-score-bonus
+          (or (nth target
+                   (photon-model-output-head-prototype-score-bonus model))
+              0.0))
+    (setq after-rival-bias
+          (or (nth rival
+                   (photon-model-output-head-prototype-bias model))
+              0.0))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'updated report)) 1))
+    (should (= (cdr (assq 'score-bonus-updated report)) 1))
+    (should (= (cdr (assq 'rival-bias-updated report)) 1))
+    (should (> after-target-score-bonus before-target-score-bonus))
+    (should (< after-rival-bias before-rival-bias))
+    (should (> (nth target after-logits) (nth target before-logits)))
+    (should (< (nth rival after-logits) (nth rival before-logits)))
+    (should (not (equal before-projection after-projection)))))
+
+(ert-deftest photon-start-long-projection-separation-pocket-restores-rejected-state ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before-projection nil)
+         (before-score-bonus nil)
+         (before-bias nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-rate 0.05)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-top-k 10.0)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-margin 1.00)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-score-bonus-rate 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-projection-separation-rival-bias-rate 0.20)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state target)
+    (photon-update-output-head-prototype
+     model
+     (photon-vector-squash
+      (photon-vector-add state
+                         (photon-vector-scale
+                          0.30
+                          (photon-model-token-embedding model rival))))
+     rival)
+    (setq before-projection
+          (copy-tree (photon-model-output-head-projection model)))
+    (setq before-score-bonus
+          (copy-tree (photon-model-output-head-prototype-score-bonus model)))
+    (setq before-bias
+          (copy-tree (photon-model-output-head-prototype-bias model)))
+    (setq report
+          (photon-start-long-projection-separation-pocket
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)
+           1))
+    (should (= (cdr (assq 'accepted report)) 0))
+    (should (= (cdr (assq 'rejected report)) 1))
+    (should (equal before-projection
+                   (photon-model-output-head-projection model)))
+    (should (equal before-score-bonus
+                   (photon-model-output-head-prototype-score-bonus model)))
+    (should (equal before-bias
+                   (photon-model-output-head-prototype-bias model)))))
+
+(ert-deftest photon-start-long-rival-negative-distill-penalizes-rival ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before nil)
+         (after nil)
+         (report nil)
+         (negative-prototypes nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set
+     model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-rival-negative-distill-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-start-long-rival-negative-distill-top-k 3.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (should (= (photon-argmax-index before) rival))
+    (setq report
+          (photon-start-long-rival-negative-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)))
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (setq negative-prototypes
+          (photon-model-output-head-negative-prototypes model))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'negative-updated report)) 1))
+    (should (< (nth rival after) (nth rival before)))
+    (should (consp (cdr (assq rival negative-prototypes))))))
+
+(ert-deftest photon-start-long-same-shape-margin-distill-separates-rival ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before nil)
+         (after nil)
+         (before-bias nil)
+         (after-bias nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set
+     model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-margin-distill-bias-weight
+     0.25)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (setq before-bias (copy-sequence
+                       (photon-model-output-head-prototype-bias model)))
+    (should (= (photon-argmax-index before) rival))
+    (setq report
+          (photon-start-long-same-shape-margin-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)
+           0.0))
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (setq after-bias (photon-model-output-head-prototype-bias model))
+    (should (= (cdr (assq 'start-long-total report)) 1))
+    (should (= (cdr (assq 'ngram-top-k-hit report)) 1))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'bias-updated report)) 1))
+    (should (> (nth target after) (nth target before)))
+    (should (< (nth rival after) (nth rival before)))
+    (should (> (nth target after-bias) (nth target before-bias)))
+    (should (< (nth rival after-bias) (nth rival before-bias)))))
+
+(ert-deftest photon-start-long-same-shape-margin-distill-adapts-bias ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (before nil)
+         (after nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-margin-distill-adaptive-bias-max
+     0.50)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-margin 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (setq report
+          (photon-start-long-same-shape-margin-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)
+           0.0))
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'bias-updated report)) 1))
+    (should (> (photon-target-margin after target rival)
+               (photon-target-margin before target rival)))))
+
+(ert-deftest photon-start-long-same-shape-margin-distill-demotes-multiple-rivals ()
+  (let* ((config (photon-make-config 11 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival-a 8)
+         (rival-b 9)
+         (tokens (append context (list target)))
+         (state nil)
+         (bias-before nil)
+         (bias-after nil)
+         (report nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "start" "##x"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-margin-distill-adaptive-bias-max
+     0.50)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-margin 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-rivals 2.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival-a)
+    (photon-update-output-head-prototype model state rival-b)
+    (setq bias-before (copy-tree (photon-model-output-head-prototype-bias model)))
+    (setq report
+          (photon-start-long-same-shape-margin-distill-token-reader
+           model
+           (photon-make-list-token-reader tokens)
+           (length context)
+           0.0))
+    (setq bias-after (photon-model-output-head-prototype-bias model))
+    (should (= (cdr (assq 'candidates report)) 1))
+    (should (= (cdr (assq 'rivals report)) 2))
+    (should (> (nth target bias-after) (nth target bias-before)))
+    (should (< (nth rival-a bias-after) (nth rival-a bias-before)))
+    (should (< (nth rival-b bias-after) (nth rival-b bias-before)))))
+
+(ert-deftest photon-output-head-prototype-score-bonus-adjusts-positive-score ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (state nil)
+         (before nil)
+         (after nil)
+         (detail nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state target)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (photon-update-output-head-prototype-score-bonus model target 0.50)
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (setq detail
+          (photon-output-head-prototype-token-detail model state target))
+    (should (= (cdr (assq 'score-bonus detail)) 0.50))
+    (should (> (nth target after) (nth target before)))))
+
+(ert-deftest photon-output-head-context-bonus-prototype-boosts-near-state ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (state nil)
+         (before nil)
+         (after nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set
+     model 'output-head-prototype-context-bonus-weight 2.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (photon-update-output-head-context-bonus-prototype model state target)
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (should (> (nth target after) (nth target before)))))
+
+(ert-deftest photon-start-long-same-shape-margin-distill-pocket-reports-best ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (result nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-margin-distill-adaptive-bias-max
+     0.50)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq result
+          (photon-start-long-same-shape-margin-distill-pocket
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)
+           0.0
+           1))
+    (should (assq 'initial-start-long-prototype result))
+    (should (assq 'best-start-long-prototype-accuracy-permil result))
+    (should (>= (cdr (assq 'best-start-long-prototype-accuracy-permil
+                           result))
+                (cdr (assq 'accuracy-permil
+                           (cdr (assq 'initial-start-long-prototype
+                                      result))))))))
+
+(ert-deftest photon-start-long-same-shape-top1-bias-search-accepts-improvement ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (result nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-margin-distill-adaptive-bias-max
+     0.50)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-margin 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq result
+          (photon-start-long-same-shape-top1-bias-search
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)))
+    (should (= (cdr (assq 'candidate-count result)) 1))
+    (should (= (cdr (assq 'accepted result)) 1))
+    (should (> (cdr (assq 'best-start-long-prototype-accuracy-permil result))
+               (cdr (assq 'accuracy-permil
+                          (cdr (assq 'initial-start-long-prototype
+                                     result))))))))
+
+(ert-deftest photon-start-long-same-shape-top1-search-accepts-context-bonus ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (result nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-top1-search-context-bonus-weight
+     2.0)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-margin 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq result
+          (photon-start-long-same-shape-top1-bias-search
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)))
+    (should (= (cdr (assq 'candidate-count result)) 1))
+    (should (= (cdr (assq 'accepted result)) 1))
+    (should (> (cdr (assq 'best-start-long-prototype-accuracy-permil result))
+               (cdr (assq 'accuracy-permil
+                          (cdr (assq 'initial-start-long-prototype
+                                     result))))))))
+
+(ert-deftest photon-start-long-same-shape-top1-search-reports-tolerance ()
+  (let* ((config (photon-make-config 10 6 2 1))
+         (model (photon-make-model config))
+         (context '(4 5 6 4))
+         (target 7)
+         (rival 8)
+         (tokens (append context (list target)))
+         (state nil)
+         (result nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c" "phot" "word" "##ton"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-projection-enabled 0.0)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-top1-search-context-bonus-weight
+     2.0)
+    (photon-model-param-set
+     model
+     'output-head-start-long-same-shape-top1-search-global-tolerance
+     25.0)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-margin 0.20)
+    (photon-model-param-set
+     model 'output-head-start-long-same-shape-margin-distill-top-k 10.0)
+    (photon-update-context-anchor-ngram-weighted model context target 4.0)
+    (setq state (cdr (assq 'state (photon-loss-report model context target))))
+    (photon-update-output-head-prototype model state rival)
+    (setq result
+          (photon-start-long-same-shape-top1-bias-search
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           (length context)))
+    (should (= (cdr (assq 'global-tolerance-permil result)) 25.0))
+    (should (= (cdr (assq 'accuracy-floor-permil result))
+               (max 0
+                    (- (cdr (assq 'accuracy-permil
+                                  (cdr (assq 'initial-output-head-prototype
+                                             result))))
+                       25.0))))))
+
+(ert-deftest photon-full-readout-distill-scale-can-use-wordpiece-scale ()
+  (let* ((config (photon-make-config 8 8 4 2))
+         (model (photon-make-model config))
+         (long-token 5))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "p" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (should (= (photon-full-readout-distill-update-scale model long-token)
+               1.0))
+    (photon-model-param-set
+     model 'output-head-full-readout-distill-wordpiece-scale-enabled 1.0)
+    (should (> (photon-full-readout-distill-update-scale model long-token)
+               1.0))
+    (photon-model-param-set
+     model 'output-head-full-readout-distill-start-long-scale 2.0)
+    (should (> (photon-full-readout-distill-update-scale model long-token)
+               2.0))))
+
+(ert-deftest photon-full-readout-distill-accepts-teacher-key ()
+  (let* ((config (photon-make-config 6 6 2 1))
+         (model (photon-make-model config))
+         (reader (photon-make-list-token-reader '(1 2 3 4)))
+         (result (photon-distill-full-readout-to-output-head-token-reader
+                  model reader 2 0.05 'structural-off)))
+    (should (eq (cdr (assq 'teacher-key result)) 'structural-off))
+    (should (= (cdr (assq 'total result)) 2))))
+
+(ert-deftest photon-context-anchor-ngram-weighted-update-adds-fractional-count ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (logits nil))
+    (photon-update-context-anchor-ngram-weighted model '(4 5) 6 0.75)
+    (setq logits (photon-context-anchor-ngram-logits model '(4 5)))
+    (should (> (nth 6 logits) 0.0))))
+
+(ert-deftest photon-wordpiece-long-rare-readout-rescue-updates-ngram-anchor ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (tokens '(4 5 6))
+         (result nil)
+         (logits nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (setq result
+          (photon-wordpiece-long-rare-readout-rescue-token-reader
+           model (photon-make-list-token-reader tokens) 2 0.50))
+    (setq logits (photon-context-anchor-ngram-logits model '(4 5)))
+    (should (= (cdr (assq 'total result)) 1))
+    (should (= (cdr (assq 'updated result)) 1))
+    (should (= (cdr (assq 'long-updated result)) 1))
+    (should (= (cdr (assq 'rare-updated result)) 1))
+    (should (> (nth 6 logits) 0.0))))
+
+(ert-deftest photon-readout-distill-updates-output-head-prototypes ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (tokens '(4 5 6))
+         (result nil)
+         (prototypes nil)
+         (bias nil)
+         (before-head nil)
+         (after-head nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-bias-weight 1.0)
+    (photon-update-context-anchor-ngram-weighted model '(4 5) 6 2.0)
+    (setq result
+          (photon-distill-readout-to-output-head-prototypes-token-reader
+           model (photon-make-list-token-reader tokens) 2 'ngram-anchor))
+    (setq prototypes (photon-model-output-head-prototypes model))
+    (should (= (cdr (assq 'total result)) 1))
+    (should (= (cdr (assq 'teacher-correct result)) 1))
+    (should (= (cdr (assq 'updated result)) 1))
+    (should (consp (cdr (assq 6 prototypes))))))
+
+(ert-deftest photon-long-piece-state-path-updates-model-path ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (before-table (copy-tree (photon-model-embedding-table model)))
+         (before-gain
+          (copy-tree (photon-model-gain-get model 'context-current-gain)))
+         (before-projection
+          (copy-tree (photon-model-projection-get model 'context-proj))))
+    (photon-update-long-piece-state-path model '(4 5) 5 6 0.05)
+    (should-not (equal before-table (photon-model-embedding-table model)))
+    (should-not
+     (equal before-gain
+            (photon-model-gain-get model 'context-current-gain)))
+    (should-not
+     (equal before-projection
+            (photon-model-projection-get model 'context-proj)))))
+
+(ert-deftest photon-ngram-long-distill-updates-output-head-prototypes ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (tokens '(4 5 6))
+         (result nil)
+         (prototypes nil)
+         (negative-prototypes nil)
+         (bias nil)
+         (before-head nil)
+         (after-head nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "phot"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-bias-weight 1.0)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-contrastive-rate 0.05)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-state-path-rate 0.05)
+    (photon-update-context-anchor-ngram-weighted model '(4 5) 6 2.0)
+    (setq before-head (copy-tree (photon-model-output-head model)))
+    (setq result
+          (photon-distill-ngram-long-to-output-head-prototypes-token-reader
+           model (photon-make-list-token-reader tokens) 2))
+    (setq prototypes (photon-model-output-head-prototypes model))
+    (setq negative-prototypes
+          (photon-model-output-head-negative-prototypes model))
+    (setq bias (photon-model-output-head-prototype-bias model))
+    (setq after-head (photon-model-output-head model))
+    (should (= (cdr (assq 'total result)) 1))
+    (should (= (cdr (assq 'long-total result)) 1))
+    (should (= (cdr (assq 'ngram-correct result)) 1))
+    (should (= (cdr (assq 'updated result)) 1))
+    (should (= (cdr (assq 'negative-updated result)) 1))
+    (should (= (cdr (assq 'state-path-updated result)) 1))
+    (should (> (nth 6 bias) 0.0))
+    (should-not (equal before-head after-head))
+    (should (consp negative-prototypes))
+    (should (consp (cdr (assq 6 prototypes))))))
+
+(ert-deftest photon-output-head-negative-prototype-penalizes-rival ()
+  (let* ((config (photon-make-config 7 2 2 1))
+         (model (photon-make-model config))
+         (state (photon-vector-from-list '(1.0 0.0)))
+         (before nil)
+         (after nil))
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-negative-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-projection-enabled 0.0)
+    (photon-update-output-head-prototype model state 5)
+    (setq before (photon-model-output-head-prototype-logits model state))
+    (photon-update-output-head-negative-prototype model state 5)
+    (setq after (photon-model-output-head-prototype-logits model state))
+    (should (< (nth 5 after) (nth 5 before)))))
+
+(ert-deftest photon-ngram-long-prototype-state-mixes-context-and-token ()
+  (let* ((config (photon-make-config 7 3 2 1))
+         (model (photon-make-model config))
+         (state (photon-vector-from-list '(0.1 0.2 0.3)))
+         (mixed nil))
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-token-mix 0.5)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-context-mix 0.5)
+    (photon-model-param-set
+     model 'output-head-prototype-ngram-long-anchor-mix 0.5)
+    (setq mixed
+          (photon-ngram-long-output-head-prototype-state
+           model state '(4 5) 6))
+    (should (= (length mixed) 3))
+    (should-not (equal mixed state))))
+
+(ert-deftest photon-output-head-prototype-diverse-trim-keeps-distant-states ()
+  (let* ((config (photon-make-config 7 3 2 1))
+         (model (photon-make-model config))
+         (near-a (photon-vector-from-list '(1.0 0.0 0.0)))
+         (near-b (photon-vector-from-list '(0.99 0.01 0.0)))
+         (far (photon-vector-from-list '(0.0 1.0 0.0)))
+         (states nil))
+    (photon-model-param-set model 'output-head-prototype-limit 2.0)
+    (photon-model-param-set model 'output-head-prototype-diverse-trim-enabled 1.0)
+    (photon-update-output-head-prototype model near-a 6)
+    (photon-update-output-head-prototype model near-b 6)
+    (photon-update-output-head-prototype model far 6)
+    (setq states (cdr (assq 6 (photon-model-output-head-prototypes model))))
+    (should (= (length states) 2))
+    (should (member far states))
+    (should (or (member near-a states) (member near-b states)))))
+
+(ert-deftest photon-output-head-prototype-evaluator-reports-accuracy ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (tokens '(4 5 6))
+         (score nil))
+    (photon-update-output-head-prototype
+     model
+     (photon-prediction-state
+      (photon-forward-model model '(4 5))
+      '(4 5))
+     6)
+    (setq score
+          (photon-evaluate-output-head-prototype-token-reader
+           model (photon-make-list-token-reader tokens) 2))
+    (should (= (cdr (assq 'total score)) 1))
+    (should (assq 'accuracy-permil score))))
+
+(ert-deftest photon-output-head-prototype-supports-covered-targets ()
+  (let* ((config (photon-make-config 7 2 2 1))
+         (model (photon-make-model config))
+         (state (photon-vector-from-list '(1.0 0.0)))
+         (logits nil))
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-support-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-support-limit 3.0)
+    (photon-model-param-set model 'output-head-prototype-projection-enabled 0.0)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(1.0 0.0)) 4)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(0.9 0.0)) 5)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(0.9 0.0)) 5)
+    (setq logits (photon-model-output-head-prototype-logits model state))
+    (should (> (nth 5 logits) (nth 4 logits)))))
+
+(ert-deftest photon-output-head-prototype-weights-wordpiece-token-kind ()
+  (let* ((config (photon-make-config 7 2 2 1))
+         (model (photon-make-model config))
+         (state (photon-vector-from-list '(1.0 0.0)))
+         (baseline nil)
+         (boosted nil))
+    (photon-model-metadata-put
+     model 'vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "phot" "##on"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-projection-enabled 0.0)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(1.0 0.0)) 5)
+    (setq baseline (photon-model-output-head-prototype-logits model state))
+    (photon-model-param-set model 'output-head-prototype-long-piece-weight 2.0)
+    (setq boosted (photon-model-output-head-prototype-logits model state))
+    (should (> (nth 5 boosted) (nth 5 baseline)))))
+
+(ert-deftest photon-output-head-prototype-weights-wordpiece-token-shape ()
+  (let* ((config (photon-make-config 8 2 2 1))
+         (model (photon-make-model config))
+         (state (photon-vector-from-list '(1.0 0.0)))
+         (baseline nil)
+         (boosted nil))
+    (photon-model-metadata-put
+     model 'vocab
+     '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "phot" "##on" "cat"))
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'output-head-prototype-weight 1.0)
+    (photon-model-param-set model 'output-head-prototype-projection-enabled 0.0)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(1.0 0.0)) 5)
+    (photon-update-output-head-prototype
+     model (photon-vector-from-list '(1.0 0.0)) 6)
+    (setq baseline (photon-model-output-head-prototype-logits model state))
+    (photon-model-param-set
+     model 'output-head-prototype-start-long-piece-weight 2.0)
+    (setq boosted (photon-model-output-head-prototype-logits model state))
+    (should (> (nth 5 boosted) (nth 5 baseline)))
+    (should (= (nth 6 boosted) (nth 6 baseline)))))
+
+(ert-deftest photon-full-readout-distill-pocket-reports-prototype-score ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (tokens '(4 5 6 4))
+         (result nil))
+    (setq result
+          (photon-distill-full-readout-to-output-head-token-reader-pocket
+           model
+           (lambda () (photon-make-list-token-reader tokens))
+           2 0.05 1 'full))
+    (should (assq 'initial-output-head-prototype result))
+    (should (assq 'best-prototype-accuracy-permil result))
+    (should (assq 'initial-start-long-linear result))
+    (should (assq 'best-start-long-linear-accuracy-permil result))
+    (should (assq 'best-selection-score result))))
+
 (ert-deftest photon-wordpiece-generation-adjusts-repeat-and-continuation ()
   (let* ((config (photon-make-config 6 6 3 2))
          (model (photon-make-model config))
@@ -678,6 +2288,123 @@
       (should (< (nth 1 adjusted) -999999.0))
       (should (< (nth 5 adjusted) (nth 5 logits)))
       (should (<= (nth 4 adjusted) (nth 4 logits))))))
+
+(ert-deftest photon-wordpiece-generation-penalizes-repeated-bigram ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 10.0 10.0 10.0)))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-model-param-set model 'wordpiece-generation-repeat-ngram-bias-weight 0.75)
+    (let ((adjusted (photon-generation-adjust-logits
+                     model '(4 5 6 4) logits)))
+      (should (< (nth 5 adjusted) (nth 5 logits)))
+      (should (= (nth 6 adjusted) (nth 6 logits))))))
+
+(ert-deftest photon-wordpiece-generation-adapts-repeated-bigram-penalty ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 10.0 10.0 10.0)))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (let ((single (photon-generation-adjust-logits
+                   model '(4 5 6 4) logits
+                   '((repeat-ngram-bias . 0.75)
+                     (repeat-ngram-bias-min-count . 2.0))))
+          (repeated (photon-generation-adjust-logits
+                     model '(4 5 4 5 6 4) logits
+                     '((repeat-ngram-bias . 0.75)
+                       (repeat-ngram-bias-min-count . 2.0)))))
+      (should (= (nth 5 single) (nth 5 logits)))
+      (should (< (nth 5 repeated) (nth 5 logits))))))
+
+(ert-deftest photon-wordpiece-generation-boosts-ngram-candidates ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 1.0 1.0 1.0)))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-update-context-anchor-ngram model '(4 5) 6)
+    (let ((adjusted (photon-generation-adjust-logits
+                     model '(4 5) logits
+                     '((ngram-bias . 1.5)))))
+      (should (> (nth 6 adjusted) (nth 6 logits)))
+      (should (= (nth 4 adjusted) (nth 4 logits))))))
+
+(ert-deftest photon-wordpiece-generation-gates-distant-ngram-candidates ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 10.0 1.0 1.0)))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-update-context-anchor-ngram model '(4 5) 6)
+    (let ((ungated (photon-generation-adjust-logits
+                    model '(4 5) logits '((ngram-bias . 2.0))))
+          (gated (photon-generation-adjust-logits
+                  model '(4 5) logits
+                  '((ngram-bias . 2.0)
+                    (ngram-bias-gate-margin . 2.0)))))
+      (should (> (nth 6 ungated) (nth 6 logits)))
+      (should (= (nth 6 gated) (nth 6 logits))))))
+
+(ert-deftest photon-wordpiece-generation-gates-close-ngram-candidates ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 10.0 1.0 9.5)))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-update-context-anchor-ngram model '(4 5) 6)
+    (let ((adjusted (photon-generation-adjust-logits
+                     model '(4 5) logits
+                     '((ngram-bias . 2.0)
+                       (ngram-bias-gate-margin . 1.0)))))
+      (should (> (nth 6 adjusted) (nth 6 logits)))
+      (should (< (- (nth 6 adjusted) (nth 6 logits)) 2.0)))))
+
+(ert-deftest photon-wordpiece-generation-repeat-scales-ngram-candidates ()
+  (let* ((config (photon-make-config 7 6 3 2))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "b" "c"))
+         (logits '(0.0 0.0 0.0 0.0 1.0 1.0 1.0))
+         (scaled-options '((ngram-bias . 2.0)
+                           (ngram-bias-repeat-scale . 0.0)
+                           (generation-history . (4 5 6 4 5)))))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-update-context-anchor-ngram model '(4 5) 6)
+    (let ((baseline (photon-generation-adjust-logits
+                     model '(4 5) logits
+                     '((ngram-bias . 2.0))))
+          (scaled (photon-generation-adjust-logits
+                   model '(4 5) logits scaled-options)))
+      (should (> (nth 6 baseline) (nth 6 logits)))
+      (should (= (nth 6 scaled) (nth 6 logits))))))
+
+(ert-deftest photon-wordpiece-generate-text-passes-ngram-bias-option ()
+  (let* ((config (photon-make-config 7 6 2 1))
+         (model (photon-make-model config))
+         (vocab '("[PAD]" "[UNK]" "[BOS]" "[EOS]" "a" "##b" "c")))
+    (photon-model-metadata-put model 'vocab vocab)
+    (photon-model-metadata-put model 'tokenizer 'wordpiece)
+    (photon-model-metadata-put model 'context-size 2)
+    (photon-model-metadata-put model 'wordpiece-max-piece-size 2)
+    (photon-model-param-set model 'wordpiece-generation-recent-token-bias-weight 0.0)
+    (photon-update-context-anchor-ngram model '(4 5) 6)
+    (should (string-suffix-p
+             "c"
+             (photon-model-generate-text
+              model "ab" 1 '((ngram-bias . 100.0)))))))
 
 (ert-deftest photon-wordpiece-readout-bias-boosts-long-rare-ngram-signal ()
   (let* ((config (photon-make-config 7 6 3 2))
@@ -703,6 +2430,15 @@
     (should (= (length generated) 5))
     (should (integerp (car (last generated))))))
 
+(ert-deftest photon-generation-sampling-seed-is-deterministic ()
+  (let* ((config (photon-make-config 6 6 3 2))
+         (model (photon-make-model config))
+         (options '((mode . sample) (temperature . 0.8)
+                    (top-k . 4) (seed . 17)))
+         (first (photon-model-generate model '(1 2 3) 6 options))
+         (second (photon-model-generate model '(1 2 3) 6 options)))
+    (should (equal first second))))
+
 (ert-deftest photon-sampling-does-not-always-pick-masked-first-index ()
   (let ((token (photon-sample-index
                 '(-1000000000.0 10.0 0.0)
@@ -716,9 +2452,63 @@
          (result (photon-train-wordpiece-text text 2 6 2 1 0.20 4))
          (model (cdr (assq 'model result))))
     (should (eq (photon-model-metadata-get model 'tokenizer) 'wordpiece))
-    (should (= (photon-model-param-get model 'context-anchor-ngram-weight) 6.0))
+    (should (= (photon-model-param-get model 'context-anchor-ngram-weight) 16.0))
+    (should (= (photon-model-param-get model 'readout-logit-temperature) 8.0))
+    (should (= (photon-model-param-get model 'output-head-prototype-projection-enabled) 0.0))
+    (should (= (photon-model-param-get model 'output-head-linear-readout-weight) 1.0))
     (should (> (length (cdr (assq 'tokens result))) 0))
     (should (stringp (photon-model-generate-text model "photon" 2)))))
+
+(ert-deftest photon-readout-temperature-preserves-argmax ()
+  (let* ((photon-vector-backend (photon-make-elisp-vector-backend))
+         (model (photon-make-model (photon-make-config 4 4 2 1)))
+         (state (photon-vector-from-list '(1.0 0.0 0.0 0.0)))
+         (raw nil)
+         (scaled nil))
+    (setcar (nthcdr 0 (photon-model-output-head model))
+            (photon-vector-from-list '(0.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 1 (photon-model-output-head model))
+            (photon-vector-from-list '(8.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 2 (photon-model-output-head model))
+            (photon-vector-from-list '(2.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 3 (photon-model-output-head model))
+            (photon-vector-from-list '(-1.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 0 (photon-model-target-prototypes model))
+            (photon-vector-from-list '(0.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 1 (photon-model-target-prototypes model))
+            (photon-vector-from-list '(0.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 2 (photon-model-target-prototypes model))
+            (photon-vector-from-list '(0.0 0.0 0.0 0.0)))
+    (setcar (nthcdr 3 (photon-model-target-prototypes model))
+            (photon-vector-from-list '(0.0 0.0 0.0 0.0)))
+    (setq raw (photon-model-readout-logits model state nil))
+    (photon-model-param-set model 'readout-logit-temperature 4.0)
+    (setq scaled (photon-model-readout-logits model state nil))
+    (should (= (photon-argmax-index raw) (photon-argmax-index scaled)))
+    (should (< (photon-target-margin scaled 1 2)
+               (photon-target-margin raw 1 2)))))
+
+(ert-deftest photon-wordpiece-split-runs-final-ngram-rescue ()
+  (let* ((photon-vector-backend (photon-make-elisp-vector-backend))
+         (train-path (make-temp-file "photon-wordpiece-train" nil ".txt"))
+         (eval-path (make-temp-file "photon-wordpiece-eval" nil ".txt")))
+    (unwind-protect
+        (progn
+          (with-temp-file train-path
+            (insert "photon stream abcabc photon stream\n"))
+          (with-temp-file eval-path
+            (insert "photon stream abcabc photon checked\n"))
+          (let* ((result (photon-train-wordpiece-text-file-split
+                          train-path eval-path 3 6 3 1 0.20 4))
+                 (rescue (cdr (assq 'wordpiece-final-ngram-rescue result))))
+            (should (assq 'fallback-after result))
+            (should (consp (cdr (assq 'history rescue))))
+            (should (assq 'accuracy-after-permil
+                          (cdr (assq 'last rescue))))
+            (should (assq 'wordpiece-long-rare-readout-rescue result))
+            (should (assq 'full-readout-distill result))))
+      (ignore-errors (delete-file train-path))
+      (ignore-errors (delete-file eval-path)))))
 
 (ert-deftest photon-wordpiece-diagnostics-report-fallback-misses ()
   (let* ((photon-vector-backend (photon-make-elisp-vector-backend))
@@ -730,7 +2520,23 @@
     (should (> (cdr (assq 'total diagnostics)) 0))
     (should (assq 'summary diagnostics))
     (should (consp (cdr (assq 'token-kinds diagnostics))))
+    (should (consp (cdr (assq 'token-shapes diagnostics))))
     (should (consp (cdr (assq 'readout-ablations diagnostics))))
+    (should (consp (cdr (assq 'readout-component-shape-gaps diagnostics))))
+    (should (consp (cdr (assq 'prototype-competition-shapes diagnostics))))
+    (let ((competition
+           (car (cdr (assq 'prototype-competition-shapes diagnostics)))))
+      (should (assq 'average-target-rank competition))
+      (should (assq 'average-target-score competition))
+      (should (assq 'average-rival-score competition))
+      (should (assq 'rival-shape-counts competition))
+      (should (assq 'rival-token-counts competition))
+      (should (assq 'top-rival-tokens competition))
+      (when (cdr (assq 'top-rival-tokens competition))
+        (let ((rival (car (cdr (assq 'top-rival-tokens competition)))))
+          (should (assq 'token rival))
+          (should (assq 'piece rival))
+          (should (assq 'count rival)))))
     (should (assq 'unknown-targets (cdr (assq 'summary diagnostics))))
     (should (assq 'rare-targets (cdr (assq 'summary diagnostics))))
     (should (listp (cdr (assq 'fallback-miss-summary diagnostics))))

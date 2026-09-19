@@ -64,6 +64,10 @@
          (cons 'cluster-distill (cdr (assq 'cluster-distill result)))
          (cons 'output-head-compress
                (cdr (assq 'output-head-compress result)))
+         (cons 'wordpiece-final-ngram-rescue
+               (cdr (assq 'wordpiece-final-ngram-rescue result)))
+         (cons 'full-readout-distill
+               (cdr (assq 'full-readout-distill result)))
          (cons 'after (cdr (assq 'after result)))
          (cons 'fallback-after (cdr (assq 'fallback-after result)))
          (cons 'wordpiece-diagnostics

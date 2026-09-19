@@ -1,0 +1,329 @@
+#+title: NeLisp Transformer Elisp化設計
+#+author: nelisp-photon
+#+language: ja
+
+* 目的
+
+~nelisp-photon~ の長期目標は、Common Lisp や外部高速 backend に依存した
+実験環境ではなく、NeLisp 仕様で拡張できる Elisp 実装として Transformer
+相当の表現力を持つ小型言語モデル基盤を作ることである。
+
+Common Lisp ライブラリは永続的な主実装ではなく、仕様抽出、数値検証、
+性能比較、将来 backend の候補として扱う。最終的な主導権は
+~photon-vector.el~ / ~photon-tensor.el~ / ~photon-transformer.el~ 側に置く。
+
+* 基本方針
+
+- 主実装は NeLisp 互換の Elisp とする
+- Common Lisp は参照実装・検証元・一時 bridge として使う
+- 高速化は API 境界を固定してから backend 差し替えで行う
+- 便利な vector / tensor 機能は将来別ライブラリ化できるよう分離する
+- Transformer 部品はまず forward-only で作り、後から学習則を足す
+- benchmark を基準に、表現力と速度の改善を数値で判断する
+
+#+begin_src text
+Common Lisp library
+  |
+  | 仕様抽出 / 数値検証 / 一時 bridge
+  v
+NeLisp tensor API
+  |
+  v
+pure Elisp implementation
+  |
+  +--> optional Common Lisp backend
+  +--> optional native / GPU backend
+#+end_src
+
+* 対象にする Common Lisp ライブラリ
+
+** MGL / MGL-MAT
+
+BLAS/CUDA を使える行列計算・機械学習系の参照候補。
+NeLisp 側では tensor storage、matrix multiplication、batch 計算 API の参考にする。
+
+** cl-waffe2
+
+tensor graph、reverse-mode autograd、device-independent operation の参考候補。
+Transformer block や将来の自動微分設計を考える時の比較対象にする。
+
+** cl-cuda
+
+低レベル GPU kernel backend の参考候補。
+主実装へ直接取り込むのではなく、将来の外部 backend API を考える材料にする。
+
+** Petalisp / numcl
+
+array programming、shape 処理、NumPy 風 API の参考候補。
+特に shape / rank / broadcasting の API 形状を比較する。
+
+* アーキテクチャ
+
+** Layer 1: vector backend
+
+既存の ~photon-vector.el~ は、現在の pure Elisp vector 処理と backend protocol
+を担当する。短期的にはここを壊さず、tensor 層から利用できる低レベル演算を
+整える。
+
+必要な演算:
+
+- dot
+- add / sub / scale
+- elementwise mul
+- norm
+- softmax helper
+- stable fingerprint
+- backend capability query
+
+** Layer 2: tensor core
+
+新規 ~photon-tensor.el~ を想定する。
+
+責務:
+
+- tensor object
+- shape / rank / size
+- dtype tag
+- storage
+- stride または row-major layout
+- reshape / transpose
+- slice / gather
+- matmul
+- batched matmul
+- softmax
+- layernorm
+
+初期実装は pure Elisp でよい。重要なのは速度ではなく、API とテストを固定する
+ことである。
+
+** Layer 3: neural building blocks
+
+新規 ~photon-nn.el~ または ~photon-transformer.el~ を想定する。
+
+責務:
+
+- linear layer
+- embedding lookup
+- positional encoding
+- attention score
+- scaled dot-product attention
+- multi-head attention
+- feed-forward network
+- residual connection
+- layer normalization
+
+最初は forward-only で実装し、現行 readout / prototype / n-gram rescue と
+比較できるようにする。
+
+** Layer 4: training rule
+
+自動微分を急がず、まずは既存の margin update / prototype update /
+output-head distillation と接続する。
+
+段階:
+
+1. forward-only Transformer block
+2. frozen Transformer state + 既存 readout 学習
+3. output-head / embedding の手動 update
+4. attention projection の部分 update
+5. 必要になった段階で autograd 風 tape を検討
+
+* Lisp-direct-bridge の位置づけ
+
+Lisp-direct-bridge は移植作業の補助として使う。
+
+役割:
+
+- Common Lisp 実装の関数 signature を調べる
+- 小さな tensor 演算の入出力を比較する
+- CL 実装と Elisp 実装の数値差分を benchmark で確認する
+- 一時的に重い演算を CL 側へ逃がす
+
+ただし、bridge を最終依存にしない。
+
+望ましい流れ:
+
+#+begin_src text
+CL function
+  -> bridge wrapper
+  -> NeLisp-compatible API
+  -> pure Elisp reimplementation
+  -> CL wrapper remains as optional backend/test oracle
+#+end_src
+
+* 実装フェーズ
+
+** Phase 1: tensor API 仕様固定
+
+成果物:
+
+- ~lisp/photon-tensor.el~
+- tensor constructor
+- shape / rank / size
+- row-major storage
+- vector backend への delegation
+- unit tests
+- small tensor benchmark
+
+完了条件:
+
+- scalar / vector / matrix / rank-3 tensor を表現できる
+- matmul と softmax が pure Elisp で動く
+- 既存 ~photon-vector.el~ と責務が混ざらない
+
+** Phase 2: Transformer forward path
+
+成果物:
+
+- ~lisp/photon-transformer.el~
+- embedding + positional encoding
+- single-head attention
+- multi-head attention
+- feed-forward block
+- layernorm
+- small forward benchmark
+
+完了条件:
+
+- small token sequence から next-token logits を生成できる
+- readout benchmark に Transformer state を入力できる
+- cache なしでも deterministic に動く
+
+** Phase 3: cache 対応
+
+成果物:
+
+- token embedding cache
+- attention key/value cache
+- window cache
+- fingerprint-based invalidation
+
+完了条件:
+
+- 同じ context の forward が cache hit する
+- benchmark に hit/miss が出る
+- cache limit 差の ablation ができる
+
+** Phase 4: 学習則接続
+
+成果物:
+
+- Transformer state を使った output-head update
+- embedding update
+- attention projection の限定 update
+- reconstruction / next-token / context loss の統合
+
+完了条件:
+
+- held-out fallback accuracy が既存 readout-only より改善する
+- prototype / n-gram rescue 依存が減る
+- benchmark で改善が再現する
+
+** Phase 5: bridge / CL oracle
+
+成果物:
+
+- Lisp-direct-bridge 経由の CL tensor oracle
+- CL と Elisp の matmul / softmax / attention 差分 test
+- optional CL backend
+
+完了条件:
+
+- pure Elisp と CL 実装の数値差分を検出できる
+- CL backend を切っても主機能が動く
+- backend 切替が benchmark で比較できる
+
+* API 案
+
+#+begin_src elisp
+(photon-tensor-create '(2 3) :storage '(1 2 3 4 5 6))
+(photon-tensor-shape tensor)
+(photon-tensor-rank tensor)
+(photon-tensor-matmul a b)
+(photon-tensor-softmax logits :axis -1)
+(photon-tensor-layernorm x :epsilon 1e-5)
+#+end_src
+
+#+begin_src elisp
+(photon-transformer-create
+ :vocab-size 256
+ :context-length 32
+ :embedding-dim 64
+ :heads 4
+ :layers 2)
+
+(photon-transformer-forward model token-ids)
+(photon-transformer-next-token-logits model token-ids)
+#+end_src
+
+Backend protocol は最初から capability を返す。
+
+#+begin_src elisp
+(photon-tensor-backend-capabilities backend)
+;; => (:matmul t :batched-matmul nil :softmax t :gpu nil :autograd nil)
+#+end_src
+
+* 別ライブラリ化の境界
+
+将来別ライブラリ化する候補:
+
+- ~photon-vector.el~ -> ~nelisp-vector~
+- ~photon-tensor.el~ -> ~nelisp-tensor~
+- Lisp-direct-bridge wrapper -> ~nelisp-cl-oracle~
+
+~nelisp-photon~ に残すもの:
+
+- corpus loader
+- training pair builder
+- language-model training loop
+- readout / prototype / rescue logic
+- benchmark harness
+- generation profile
+
+境界の基準:
+
+- 言語モデルに依存しないものは外へ出せる
+- corpus / token / loss / generation に依存するものは ~nelisp-photon~ に残す
+- backend protocol は外部化しても、photon 側から薄く呼べる形にする
+
+* リスク
+
+** pure Elisp の速度不足
+
+対策:
+
+- tensor API を先に固定する
+- benchmark を小さく保つ
+- backend 差し替え可能にする
+- hot path だけ CL/native/GPU に逃がせる境界を残す
+
+** Transformer 実装が大きくなりすぎる
+
+対策:
+
+- forward-only から始める
+- single-head attention を先に完成させる
+- multi-head / multi-layer は benchmark 後に足す
+- autograd は最後まで急がない
+
+** CL 依存が固定化する
+
+対策:
+
+- CL は optional backend/test oracle と明記する
+- pure Elisp test を正規テストにする
+- bridge なしで動く examples を維持する
+
+* 次の実装タスク
+
+優先順:
+
+1. ~lisp/photon-tensor.el~ を追加する
+2. tensor shape / rank / storage / matmul / softmax を実装する
+3. ~test/photon-test.el~ に tensor unit test を追加する
+4. ~examples/tensor-transformer-smoke.el~ を作る
+5. single-head attention の forward-only 実装へ進む
+
+この設計では、短期的な高速化よりも NeLisp 仕様としての拡張性を優先する。
+ただし API 境界を固定することで、後から CL/GPU backend を追加できる余地を
+残す。

@@ -1,0 +1,12 @@
+heldout photon streams should keep local memory useful without copying loops.
+chunked readers expose windows where output heads and prototypes disagree.
+rare wordpiece fragments should still decode into readable generated text.
+sampling profiles are judged by collapse and distinct ngram coverage.
+abcabc patterns are useful only when they do not dominate every prompt.
+fallback readout should generalize across reader, benchmark, and heldout terms.
+heldout photon streams should keep local memory useful without copying loops.
+chunked readers expose windows where output heads and prototypes disagree.
+rare wordpiece fragments should still decode into readable generated text.
+sampling profiles are judged by collapse and distinct ngram coverage.
+abcabc patterns are useful only when they do not dominate every prompt.
+fallback readout should generalize across reader, benchmark, and heldout terms.

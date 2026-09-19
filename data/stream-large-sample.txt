@@ -1,0 +1,20 @@
+photon stream models read compact text windows and update local memory.
+the reader keeps chunked training small while the output head learns repeats.
+abcabc photon stream repeats are useful but repeated loops must be controlled.
+wordpiece tokens split common fragments and keep rare words visible.
+generation should balance familiar ngrams with new combinations.
+small corpus signals can overfit, so sampling profiles need heldout prompts.
+the benchmark records collapse, distinct tokens, and repeated adjacent runs.
+context anchors provide a fallback when dense output heads are weak.
+prototype memories help recover targets that appear in nearby states.
+temperature and top k sampling expose diversity without changing training.
+photon stream models read compact text windows and update local memory.
+the reader keeps chunked training small while the output head learns repeats.
+abcabc photon stream repeats are useful but repeated loops must be controlled.
+wordpiece tokens split common fragments and keep rare words visible.
+generation should balance familiar ngrams with new combinations.
+small corpus signals can overfit, so sampling profiles need heldout prompts.
+the benchmark records collapse, distinct tokens, and repeated adjacent runs.
+context anchors provide a fallback when dense output heads are weak.
+prototype memories help recover targets that appear in nearby states.
+temperature and top k sampling expose diversity without changing training.

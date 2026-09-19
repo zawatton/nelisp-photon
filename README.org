@@ -2,17 +2,46 @@
 
 * Overview
 
-~nelisp-photon~ is a small PHOTON-style language-model experiment written as
-plain Emacs Lisp that can be loaded by NeLisp.
+~nelisp-photon~ is an Emacs-Lisp / NeLisp implementation of Fujitsu's
+*PHOTON* architecture (Parallel Hierarchical Operation for TOp-down
+Networks): a non-Transformer, hierarchical autoregressive language-model
+architecture that replaces token-by-token "horizontal" scanning with a
+multi-resolution, top-down hierarchy, drastically cutting decode-time
+KV-cache traffic.
 
-This is not a reproduction of Fujitsu's PHOTON paper.  It is a compact
-executable sketch of the architectural idea:
+Reference (read before redesigning the core architecture): PHOTON paper,
+Ichikawa et al. (to appear at ACL 2026) -- https://arxiv.org/abs/2512.20687
 
-- split tokens into fixed-size chunks
-- compress each chunk bottom-up into a coarse latent state
-- run causal context updates over the coarse states
-- decode each chunk with a bounded local autoregressive decoder
-- generate multiple candidates and merge them by voting
+PHOTON's core ideas this repository implements:
+
+- *Bottom-up encoder*: compress tokens into low-rate contextual states,
+  forming a multi-level representation hierarchy.
+- *Lightweight top-down decoders*: reconstruct fine-grained token
+  representations in parallel across the hierarchy.
+- *Recursive generation*: update only the coarsest latent stream, avoiding
+  redundant re-encoding.
+- *Multi-query integration*: generate several candidate continuations and
+  consolidate them by voting / best selection.
+
+Concretely, the executable sketch:
+
+- splits tokens into fixed-size chunks
+- compresses each chunk bottom-up into a coarse latent state
+- runs causal context updates over the coarse states
+- decodes each chunk with a bounded local autoregressive decoder
+- generates multiple candidates and merges them by voting
+
+Reported PHOTON benefits (Fujitsu / paper): up to ~475x multi-query
+throughput per GPU resource and up to ~10^3x higher throughput per unit
+memory versus Transformers, with comparable quality.  The win is in the
+long-context, multi-query, and multi-agent regimes where Transformer
+KV-cache traffic dominates.
+
+Note: a complementary GPT-style dense engine (~photon-tensor~,
+~photon-transformer~) and a GPU backend (sibling ~nelisp-gpu~) also live
+here as a fast, well-understood baseline and as the tensor/GPU substrate;
+the PHOTON hierarchical core above is the architectural identity of the
+project.
 
 The implementation deliberately uses simple vector arithmetic and deterministic
 pseudo-weights, so the first milestone is inspectable behavior rather than
@@ -58,6 +87,26 @@ make text-train
 
 This builds a small character vocabulary, encodes the text, trains the output
 head, and generates text from a prompt.
+
+The character demo also runs on the standalone NeLisp binary, not only
+inside Emacs:
+
+#+begin_src sh
+../nelisp/target/nelisp --load examples/text-train.el
+#+end_src
+
+To stay loadable there, ~photon.el~ carries a small portability layer,
+all guarded so real Emacs keeps its native versions: pure-elisp ~exp~,
+~log~, ~random~, and ~sxhash~ (used by softmax, the log-sum-exp
+perplexity, and the seeded sampler), plus model/vocab/history persistence
+that writes with ~prin1-to-string~ and reads through the O(n) file loader
+instead of ~(prin1 ... (current-buffer))~ / ~(read (current-buffer))~.
+The standalone runtime exposes no ~current-buffer~ and its
+~read-from-string~ is quadratic on multi-KB input, so the loader wrapper
+keeps model loading linear.  With these in place a NeLisp run trains the
+repeated ~"ab ab"~ corpus to held-out accuracy 1000 permil and generates
+from a prompt in both greedy and seeded-sample modes, including through
+~examples/photon-cli.el~ (~make photon-cli-generate~).
 
 Run the same path from a plain text corpus file:
 
@@ -172,10 +221,39 @@ max repeated run, newline/space overrun rates, a compact collapse score, and a
 small wordpiece-tokenizer preview.  It now also includes a compact
 ~level-comparison~ table for char vs wordpiece evaluation with fallback
 accuracy, NLL/perplexity, average repetition/collapse, and distinct-n metrics.
-The output also includes ~sampling-comparison~ rows for greedy,
-temperature+top-k, and temperature+top-p generation with repetition penalty.
+The output also includes ~sampling-comparison~, ~sampling-bias-ablation~,
+~sampling-weight-sweep~, and ~sampling-profile-validation~ rows for greedy,
+temperature+top-k, top-p, and the current recommended sampling profile.
 The metric is intentionally small and local; it is a regression signal for
 whether generation is becoming more text-like, not a language-quality score.
+
+Run a larger stream generation profile probe:
+
+#+begin_src sh
+make large-readout-smoke-benchmark
+make large-readout-mid-benchmark
+make large-readout-mid-ablation
+make large-readout-benchmark
+make large-generation-benchmark
+#+end_src
+
+This uses ~data/stream-large-sample.txt~ and
+~data/stream-large-eval-sample.txt~ to compare baseline, recommended, and
+aggressive sampling profiles across train/eval prompts without printing full
+generations.  It also emits a compact wordpiece readout diagnostics summary so
+larger-split failures can be assigned to output-head/prototype/ngram/readout
+components before tuning sampling again.  Use ~large-readout-benchmark~ when
+you only need the larger split's train/eval/readout diagnostics and ablations;
+it skips the final train/eval generation profile rows.  Use
+~large-generation-benchmark~ for the slower full probe that also validates the
+generation sampling profiles.  Use ~large-readout-mid-benchmark~ for a
+middle-sized compact readout regression row; it limits train/eval tokens but
+keeps context size 4 and hidden size 8.  Use ~large-readout-mid-ablation~ when
+comparing start-long readout update families; it is heavier because it trains a
+fresh middle-sized model for each row.  Use ~large-readout-smoke-benchmark~ for
+a shorter structural check; it keeps the same result shape but limits
+train/eval tokens, diagnostics, full-readout distill epochs, and candidate
+search.
 
 Run the same toy training through the Emacs Lisp vector backend:
 
@@ -344,12 +422,566 @@ Current stream split snapshot:
   about 1.860, perplexity about 6.425, average repeated-token rate about 42
   permil, average collapse score about 217, and average distinct-1 about 186
   permil after masking structural wordpiece tokens during generation.  After
-  the wordpiece n-gram rescue pass, current wordpiece held-out/fallback
-  accuracy is 750 permil, long-piece fallback is 645 permil, and
-  ~linear-output-head-only~ is 525 permil.  The
-  wordpiece generation penalty brings repetition/collapse below the current
-  char row, though distinct-n is still lower and remains the next
-  generation-quality target.
+  the wordpiece n-gram rescue pass, final readout n-gram retuning, and final
+  contrastive n-gram rescue, current wordpiece held-out/fallback accuracy is
+  900 permil, long-piece fallback is 903 permil, rare fallback is 833 permil,
+  and
+  ~linear-output-head-only~ improves to 587 permil after full-readout teacher
+  distillation into the dense affine output head.  A final readout logit
+  temperature keeps the top-1 choice unchanged while reducing over-confident
+  margins: average target margin is now about 4.09 instead of 32.68, and
+  wordpiece NLL/perplexity improves from 3.977 / 53.4 to about 1.187 / 3.28.
+  Current greedy generation has average repeated-token rate about 20 permil,
+  collapse score about 270, distinct-1 about 244, and distinct-2 about 405;
+  with fixed seed 17, top-k/top-p distinct-2 is about 476/311.  The compact
+  3-seed summary is now the better comparison surface: top-k averages about
+  33 repeated-token permil, collapse 200, distinct-1 219, and distinct-2 429;
+  top-p averages about 83 repeated-token permil, collapse 300, distinct-1 180,
+  and distinct-2 327.  The generation-side bias ablation now shows that
+  ~ngram-bias . 0.40~ improves top-k diversity on this split: 3-seed top-k
+  averages move to about 32 repeated-token permil, collapse 215, distinct-1
+  237, and distinct-2 465.  Generation adjustment now receives full token
+  history even when the model readout uses a short sliding window, so
+  ~repeat-ngram-bias . 0.35~ can see longer generated repeats; it raises
+  distinct-2 to about 551 but also raises collapse to about 265.  Combining it
+  with ~ngram-bias~ pushes distinct-2 to about 572 with collapse about 253.
+  The adaptive repeat gate ~repeat-ngram-bias-min-count . 2.0~ backs off the
+  repeat penalty until the repeated-bigram signal appears at least twice; it
+  lands between baseline and fixed repeat bias at repeated-token 36, collapse
+  261, distinct-1 251, and distinct-2 530.
+  ~sampling-weight-sweep~ now compares a small 3x3 grid of
+  ~ngram-bias~ / ~repeat-ngram-bias~ values and ranks rows by
+  ~distinct-2 - collapse~.  On the current split, the best row is
+  ~ngram-bias . 0.25~ plus ~repeat-ngram-bias . 0.35~: repeated-token 32,
+  collapse 240, distinct-1 256, distinct-2 568, score 328.  The more aggressive
+  ~0.40 / 0.35~ row has slightly higher distinct-2 at 572 but worse collapse
+  at 253, so the lighter n-gram bias is the current preferred generation
+  setting.
+  Strict ~ngram-bias-gate-margin . 0.0~ and adaptive
+  ~ngram-bias-repeat-scale . 0.0~ currently match the fixed n-gram row, so the
+  next generation-quality work is direct collapse-aware scoring on larger
+  corpora rather than another n-gram gate.  The selected profile is also
+  checked by ~sampling-profile-validation~ on both train prompts and eval
+  prompts.  On train prompts it improves score from 229 to 328 versus the
+  baseline.  On eval prompts it improves score from 160 to 261, while the
+  aggressive row reaches similar score 259 with worse collapse 313.  This
+  keeps ~0.25 / 0.35~ as the current preferred generation profile.
+  ~large-generation-benchmark~ adds a larger synthetic stream split with a
+  lightweight training path and readout diagnostics.  Current vocab size is
+  222 and full held-out accuracy is 602 permil after adding a separate
+  long/rare readout rescue before dense-head distillation.  That rescue updates
+  45 eval-prefix misses, including 41 long-piece and 18 rare targets, and
+  raises prefix fallback from 482 to 715 permil before dense distillation.  The
+  benchmark then compares ~full-scaled~, ~full-unscaled~,
+  ~structural-off-unscaled~, and ~char-structural-bias-off-unscaled~ teacher
+  candidates.  ~full-scaled~ is now selected because it gives the best dense
+  linear output-head score, 241 permil; ~full-unscaled~ reaches 232, while the
+  non-structural teachers reach 181.  Diagnostics on the selected eval prefix
+  report full fallback 715, top-5 922, memory-hit 206, long-piece fallback 666,
+  short-piece fallback 758, and rare fallback 722.  This is a clear improvement
+  over the previous larger-split bottleneck: long-piece fallback 240, rare
+  fallback 0, linear-output-head-only 215, and full fallback 491.  The profile
+  validation still favors the selected sampling family: on train prompts it
+  improves score from 297 to 387/410 for recommended/aggressive, and on eval
+  prompts from 315 to 429.  Final wordpiece defaults now route the trained
+  linear output head into ~raw-output-head~, moving ~raw-output-head-only~ from
+  0 to 241 permil while preserving the larger-split long/rare gains.  A
+  readout-to-output-head-prototype distillation pass then stores the 83
+  teacher-correct prefix states in output-head prototype memory, moving
+  ~output-head-prototype-only~ from 0 to 379 permil and ~raw-output-head-only~
+  to 250.  Full-readout distillation pocket selection now tracks both linear
+  and output-head-prototype accuracy, and final wordpiece prototype scoring can
+  compare raw states instead of the mutable output-head projection.  That moves
+  ~output-head-prototype-only~ to 387 and ~raw-output-head-only~ to 413 while
+  preserving full fallback 715 and held-out 602.  Increasing the output-head
+  prototype coverage limit from 8 to 32 then moves
+  ~output-head-prototype-only~ to 560 and ~raw-output-head-only~ to 551 while
+  keeping held-out 602, fallback 715, and the selected ~full-scaled~ teacher.
+  The remaining trainable-path gap is now output-head-prototype-only 560 versus
+  ngram-anchor-only 672 and full readout 715.  Diagnostics now include
+  class-wise ~output-head-prototype~ accuracy and n-gram gap fields; the
+  current larger split shows the remaining prototype weakness is long pieces:
+  output-head-prototype reaches 296 permil on long pieces and 790 permil on
+  short pieces, while n-gram anchor reaches 666 and 677 respectively.  A
+  prototype support-weight scorer and wordpiece token-kind weights exist for
+  ablation, but they are off/neutral by default: simple support addition hurt
+  the smoke split, and a long-piece weight of 1.1 lowered the larger split's
+  output-head-prototype-only score from 560 to 362.  An opt-in
+  ngram-correct/long-piece prototype distill path can now add prototype states
+  and token-specific prototype bias for long-piece misses, but the current
+  larger split keeps direct target bias and mixed prototype state off by
+  default: state-only distill found 22 candidates but did not improve the 560
+  permil prototype score, bias weight 1.0 lowered it to 327, and a 0.35/0.35
+  target/context mixed-state variant still kept output-head-prototype-only at
+  560.  A small contrastive update on the same ngram-correct long-piece misses
+  is now enabled: contrastive rate 0.02 lifts full fallback from 715 to 732,
+  top-5 from 922 to 931, and linear-output-head-only from 241 to 258.  A
+  post-contrastive full-teacher prototype refresh then stores the corrected
+  readout states again, moving ~output-head-prototype-only~ from 560 to 577,
+  ~raw-output-head-only~ from 551 to 560, and the prototype pocket score from
+  560 to 577 while preserving full fallback 732 and top-5 931.  The same
+  larger split now reports short-piece output-head-prototype accuracy at 822
+  permil, but long-piece prototype accuracy is still 296 versus n-gram anchor
+  666.  Negative output-head prototypes are available as an opt-in ablation
+  for those ngram-correct long-piece collisions; they record the mistaken
+  rival state and subtract a token-local prototype penalty.  This is off by
+  default because the larger split showed the online ngram-long pass improving
+  from 568 to 698 permil, but the final static prototype ablation fell from
+  577 to 560 with weight 1.0/8.0 and to 543 when the post-refresh was skipped.
+  N-gram long-piece prototype states can also mix a context-anchor state and
+  the readout-to-prototype refresh can be restricted to a target token kind, but
+  both are off by default: anchor mix 0.5 lowered the larger split's
+  output-head-prototype-only score from 577 to 568 and full fallback from 732
+  to 724, while an extra long-piece-only full-teacher prototype refresh updated
+  36 long-piece states but left output-head-prototype-only at 577 and
+  long-piece output-head-prototype accuracy at 296.  A state-path update hook is
+  also available for the same ngram-correct long-piece misses; it pushes a
+  token-embedding difference back into context embeddings, context/decoder
+  gains, and context/decoder projections.  It is off by default:
+  ~output-head-prototype-ngram-long-state-path-rate . 0.02~ updated 23
+  candidates and nudged ~raw-output-head-only~ from 560 to 568, but kept full
+  fallback at 732, ~output-head-prototype-only~ at 577, and long-piece
+  output-head-prototype accuracy at 296; rate 0.10 also left the same primary
+  metrics unchanged.  A train-time long-piece teacher hook can additionally
+  use n-gram teacher hits during normal training to push a mixed
+  state/context-anchor signal into the target prototype, output-head prototype,
+  output head, and state path.  This is also off by default:
+  ~wordpiece-long-teacher-state-path-weight . 0.25~ kept full fallback at 732,
+  ~output-head-prototype-only~ at 577, and long-piece output-head-prototype at
+  296 while nudging ~raw-output-head-only~ from 560 to 568; weight 1.0 lifted
+  full fallback to 741 and kept ~raw-output-head-only~ at 568, but still left
+  ~output-head-prototype-only~ at 577 and long-piece output-head-prototype at
+  296, while lowering ~linear-output-head-only~ from 258 to 232.
+  Wordpiece diagnostics now also split token classes by piece shape, so
+  continuation and word-start pieces can be tracked separately.  A
+  continuation-piece teacher hook uses n-gram top-5 hits during normal training
+  and mixes the previous-token embedding into the teacher state.  It remains
+  off by default because it lowers the smoke split's
+  ~output-head-prototype-only~ score from 827 to 793, but it is a useful larger
+  split ablation: ~wordpiece-continuation-teacher-state-path-weight . 1.0~
+  moves ~output-head-prototype-only~ from 577 to 586,
+  ~raw-output-head-only~ from 560 to 577, and long-piece
+  output-head-prototype from 296 to 314 while full fallback stays at 732.
+  Weight 2.0 raises ~output-head-prototype-only~ further to 603 and
+  short-piece output-head-prototype from 822 to 854, with the same full
+  fallback 732, but lowers ~linear-output-head-only~ from 258 to 206.  Shape
+  diagnostics now include component gaps by token shape.  On the current larger
+  split, start-long-piece is the bottleneck: n-gram reaches 578 permil, but
+  raw-output-head reaches only 52 and output-head-prototype only 78; by
+  contrast continuation-long-piece reaches 875 n-gram, 812 raw-output-head, and
+  812 output-head-prototype.  A start-long-piece teacher hook is available as
+  an opt-in ablation, but weight 1.0 worsened the larger split:
+  ~output-head-prototype-only~ fell from 577 to 568 and full fallback from 732
+  to 724 while start-long-piece output-head-prototype stayed at 78.  The
+  full-readout-to-output-head distill path also has optional shape multipliers
+  for dense-head compression, but simply doubling the start-long-piece update
+  scale did not fix this bottleneck either: full fallback fell from 732 to 724,
+  ~linear-output-head-only~ fell from 258 to 232, and start-long-piece
+  raw-output-head/output-head-prototype stayed at 52/78.  Pocket selection can
+  also include a start-long-piece linear score, but
+  ~output-head-full-readout-distill-selection-start-long-weight . 2.0~ did not
+  find a better start-long checkpoint: start-long linear stayed at 26 inside
+  the pocket history, final start-long raw-output-head stayed at 52, and
+  ~linear-output-head-only~ moved from 258 to 250.  The start-long path
+  can now also mix token, context-average, and anchor states into its opt-in
+  teacher target, but
+  ~wordpiece-start-long-teacher-state-path-weight . 1.0~ with
+  ~wordpiece-start-long-teacher-token-mix . 0.50~,
+  ~wordpiece-start-long-teacher-context-mix . 0.25~, and
+  ~wordpiece-start-long-teacher-anchor-mix . 0.25~ still left start-long
+  raw-output-head/output-head-prototype at 52/78, lowering full fallback to
+  724 and ~linear-output-head-only~ to 232.  A start-long-only boundary readout
+  component is also available as an opt-in suffix table plus start-long-filtered
+  n-gram bridge.  The suffix table alone was too sparse on the larger split
+  (~start-long-boundary-readout-only~ 43 permil).  Adding
+  ~wordpiece-start-long-boundary-ngram-mix . 1.0~ with boundary weight 8.0
+  raised ~output-head-prototype-only~ from 577 to 586 and
+  ~raw-output-head-only~ from 560 to 577, but lowered full fallback to 724 and
+  increased the large run to about 5m07s.  The same bridge can now be exposed
+  only as a full-readout distill teacher via ~start-long-boundary-teacher~ so
+  inference-time full readout is not changed.  With teacher weight 8.0 and
+  n-gram mix 1.0, the larger split selected
+  ~start-long-boundary-teacher-scaled~ and kept full fallback at 732, but it
+  only reached ~linear-output-head-only~ 250 and did not move start-long
+  raw-output-head/output-head-prototype from 52/78.  A separate opt-in
+  start-long affine classifier can also be trained only on start-long targets
+  and exposed as ~start-long-classifier-teacher~ for dense-head distillation.
+  With classifier enabled and teacher weight 8.0, the larger split again kept
+  full fallback at 732, but the classifier teacher was weak
+  (~teacher-accuracy-permil~ 189, ~updated~ 22), ~linear-output-head-only~
+  fell to 146, ~start-long-classifier-only~ was 0, and start-long
+  raw-output-head/output-head-prototype stayed at 52/78.  A supervised
+  start-long positive distill pass is now available as an opt-in bridge from
+  n-gram evidence into the dense output head.  It updates only start-long
+  targets whose n-gram readout contains the target in top-k.  On the larger
+  split, weight 1.0 with top-k 3 updated 35 rows, kept full fallback at 732,
+  and raised ~linear-output-head-only~ to 267, but start-long
+  raw-output-head/output-head-prototype still stayed at 52/78.  Top-k 1 reduced
+  the positive rows to 22 and reached the same final 267 linear score.  A
+  stronger weight 2.0 for 2 epochs over-pushed the dense head: full fallback
+  fell to 724 and ~linear-output-head-only~ fell to 198.  The start-long path
+  also has an opt-in projected-prototype distill pass that stores the
+  output-head-projected state after full distillation.  With top-k 1 it updated
+  22 projected prototypes and kept fallback at 732, but start-long
+  output-head-prototype still stayed at 78.  Adding token-local prototype bias
+  through weight 1.0 made the pass visibly affect the prototype readout
+  (overall prototype accuracy inside the pass rose from 267 to 353 permil),
+  but it damaged global ~output-head-prototype-only~ from 577 to 275 and still
+  left start-long raw-output-head/output-head-prototype at 52/78.
+  The start-long path
+  therefore needs a structurally different compression target, not another
+  direct n-gram-hit state-path push, scalar distill multiplier,
+  scalar pocket-selection bonus, simple teacher-state interpolation, sparse
+  boundary suffix table, teacher-only boundary bridge, or target-only affine
+  start-long classifier.  Positive n-gram supervision is useful for the dense
+  linear head, but it still does not repair the start-long projected prototype
+  representation.  Wordpiece diagnostics now include
+  ~prototype-competition-shapes~ to make this visible without inspecting every
+  miss.  On the current larger split, start-long-piece target prototypes are
+  ranked poorly by the same tie-breaking semantics used by argmax:
+  target-top-1/top-3/top-5 are 78/157/210 permil, average target rank is about
+  67.7, average target score is about 0.658, average rival score is 1.0, and
+  average target/rival prototype counts are about 1.95/2.89.  By contrast,
+  continuation-long-piece reaches target-top-1/top-3/top-5 of 812/875/875
+  permil with average target rank 11.0.  This confirms that start-long failure
+  is a prototype competition problem: direct target prototype insertion and
+  token-local bias can add evidence, but rival candidates still dominate or tie
+  under the projected-state scorer.  The next update should therefore separate
+  start-long target states from rival start-long/short-piece candidates with a
+  discriminative negative or shape-aware tie-breaker, rather than adding more
+  positive rows to the same prototype table.  A first opt-in start-long rival
+  negative pass is now available as
+  ~output-head-start-long-rival-negative-distill-weight~.  It records negative
+  prototype states for prototype rivals when the n-gram readout has the
+  start-long target in top-k, and
+  ~output-head-start-long-rival-negative-distill-rivals~ can extend this from
+  the top rival to several high-scoring rivals.  The larger split shows this is
+  not sufficient by itself: weight 0.25 with one rival updated 35 negative
+  states, preserved full fallback 732/top-5 931, but lowered
+  ~output-head-prototype-only~ from 577 to 560 and moved start-long
+  target-top-1/top-3/top-5 from 78/157/210 to 0/131/236.  With five rivals it
+  updated 175 negative states, kept fallback 732, and still left
+  ~output-head-prototype-only~ at 560 with start-long 0/131/210.  The reader's
+  immediate rank report improves slightly, but final diagnostics show the
+  penalty mostly swaps one rival for another.  The next useful change is
+  therefore a target-aware separation objective or shape-aware tie-breaker that
+  raises target scores, not a broader static negative table alone.  Prototype
+  scoring also has opt-in wordpiece shape weights such as
+  ~output-head-prototype-start-long-piece-weight~ and the matching
+  continuation/start-short/continuation-short weights.  A short smoke run with
+  start-long weight 1.10 lowered ~output-head-prototype-only~ from 653 to 538,
+  and 1.02 still lowered it to 615 without improving start-long top-1.  The
+  newer ~rival-shape-counts~ field explains why: on the larger split,
+  start-long-piece rivals are start-long-piece in 36 of 38 cases and
+  start-short-piece in only 2 cases.  The start-long bottleneck is therefore
+  mostly same-shape token competition, so a shape-only tie-breaker is not the
+  right lever; the next readout update needs same-shape target/rival
+  separation inside the prototype space.  A first same-shape margin pass is now
+  available as
+  ~output-head-start-long-same-shape-margin-distill-bias-weight~ plus optional
+  linear-head weight.  It selects the best same-shape prototype rival for
+  start-long targets whose n-gram readout contains the target, then raises the
+  target prototype bias and lowers the rival bias when the same-shape margin is
+  below threshold.  The prototype scorer was also fixed so prototype bias is
+  applied even when a token has no stored positive prototype row.  On the short
+  smoke split, bias 0.02 preserves ~output-head-prototype-only~ at 653 while
+  moving the reader-local start-long rank from 29.0 to 3.11 and final
+  start-long average rank from 28.56 to 5.89.  On the larger split, bias 0.02
+  keeps full fallback 732/top-5 931 and improves start-long average rank from
+  67.74 to 34.74, but lowers start-long target-top-1 from 78 to 26 and
+  ~output-head-prototype-only~ from 577 to 568.  Restricting the n-gram gate to
+  top-1 updates 22 rows and keeps fallback 732, but only reaches start-long
+  target-top-1 52 and average rank 68.18.  Same-shape bias can move the rank,
+  but the next step needs a rank-aware or top-1-aware objective instead of a
+  uniform target/rival bias shift.  The same pass now also supports
+  ~output-head-start-long-same-shape-margin-distill-adaptive-bias-max~, which
+  clamps the bias step to the current margin deficit instead of using a fixed
+  step.  On the short smoke split, adaptive max 0.10 preserves
+  ~output-head-prototype-only~ at 653 and moves reader-local rank 28.89 to
+  2.78, but final start-long top-1 still stays at 111 permil.  On the larger
+  split, adaptive max 0.10 keeps fallback 732 and improves start-long average
+  rank to 35.05 with top-1 52, top-3 157, and top-5 210; this is better than
+  fixed 0.02 for top-1 but still below the baseline top-1 of 78.  Adaptive
+  clamping confirms the next objective must optimize the final top-1 decision,
+  not only the average same-shape margin.  The same-shape pass is now wrapped
+  by ~photon-start-long-same-shape-margin-distill-pocket~, which evaluates
+  final output-head-prototype top-1 directly and restores the best checkpoint.
+  With adaptive max 0.10 on the larger split, the local reader report still
+  improves start-long rows from 568 to 741 permil and average rank from 69.45
+  to 28.45, but the selected final checkpoint preserves the safer baseline:
+  full fallback 732, ~output-head-prototype-only~ 577,
+  ~raw-output-head-only~ 560, start-long target-top-1/top-3/top-5
+  78/157/210, and average target rank 67.74.  This makes the pass useful as a
+  non-regressing diagnostic wrapper, but the actual next objective still needs
+  to turn local same-shape margin gains into the final argmax decision instead
+  of being discarded by top-1 pocket selection.  The same-shape pass can now
+  demote multiple same-shape rivals via
+  ~output-head-start-long-same-shape-margin-distill-rivals~.  This is still
+  opt-in and defaults to one rival.  On the short smoke split, rivals 5 with
+  adaptive max 0.10 preserves fallback 846, ~output-head-prototype-only~ 653,
+  and start-long top-1 111, while moving start-long top-5 from 333 to 555 and
+  keeping average rank at 5.89.  On the larger split, rivals 5 alone preserves
+  fallback 732 and ~output-head-prototype-only~ 577, but still selects the
+  baseline final top-1 checkpoint.  A heavier opt-in greedy search,
+  ~output-head-start-long-same-shape-top1-search-enabled~, now evaluates each
+  same-shape bias candidate against final output-head-prototype top-1 and only
+  keeps non-regressing updates.  On the larger split it tested 35 candidates,
+  accepted 11, preserved fallback 732, ~output-head-prototype-only~ 577, and
+  ~raw-output-head-only~ 560, and improved start-long average rank from 67.74
+  to 37.87 while keeping target-top-1/top-3/top-5 at 78/157/210.  This is a
+  better non-regressing bridge, but still not enough to add a new start-long
+  top-1 hit.  The prototype scoring surface now also has
+  ~output-head-prototype-score-bonus~, a token-local multiplier bonus applied
+  only when a positive output-head prototype score exists.  The opt-in
+  ~output-head-start-long-same-shape-top1-search-score-bonus-max~ lets the
+  greedy search test this surface instead of pure bias.  Score bonus alone did
+  not help the short smoke split, even at 4.0: all 9 candidates were rejected
+  and start-long top-1 stayed at 111.  Combined with the same-shape bias pass
+  on the larger split, score-bonus max 4.0 tested 35 candidates and accepted
+  13, preserving fallback 732 and ~output-head-prototype-only~ 577 while
+  nudging ~raw-output-head-only~ from 560 to 568 and start-long
+  top-3/top-5 from 157/210 to 184/236.  Top-1 still stays at 78, so the next
+  update needs more than token-local bias or token-local positive-score
+  scaling.  A first context-conditioned prototype scoring surface is now
+  available as ~output-head-context-bonus-prototypes~ plus
+  ~output-head-prototype-context-bonus-weight~.  The top-1 greedy search can
+  add the current state as a target-local bonus prototype via
+  ~output-head-start-long-same-shape-top1-search-context-bonus-weight~.  On the
+  short smoke split, context bonus weight 8.0 accepted 1 of 9 candidates,
+  preserved fallback 846 and ~output-head-prototype-only~ 653, and improved
+  start-long average rank from 5.89 to 5.0 while keeping top-1/top-3/top-5 at
+  111/333/555.  On the larger split, the same context bonus combined with the
+  same-shape bias pass was too conservative under the non-regression criterion:
+  it rejected all 35 candidates and preserved the baseline
+  target-top-1/top-3/top-5 78/157/210 and average rank 67.74.  This confirms
+  that context-conditioned scoring is wired in and useful on the toy smoke
+  path, but the larger split still needs more than direct state insertion.
+  The top-1 greedy search now reports start-long top-3/top-5 and supports
+  ~output-head-start-long-same-shape-top1-search-global-tolerance~, allowing
+  rank or top-k improvements as long as global prototype accuracy remains above
+  the initial accuracy minus the tolerance.  On the short smoke split,
+  tolerance 20 with context bonus 8.0 matches the strict result: 1 of 9
+  accepted, global prototype 653, and average rank 5.0.  On the larger split,
+  tolerance 20 still rejects all 35 context-bonus candidates, so they do not
+  even improve top-3/top-5 within the tolerance floor.  With score-bonus max
+  4.0, tolerance 20 matches the earlier result: 13 of 35 accepted, global
+  prototype 577, ~raw-output-head-only~ 568, start-long top-3/top-5 184/236,
+  and average rank 37.66.  The next update should therefore target projected
+  representation separation directly, rather than only relaxing acceptance.
+  A first opt-in projected representation separation pass is now available as
+  ~photon-start-long-projection-separation-token-reader~ and the benchmark
+  knobs
+  ~photon-large-readout-start-long-projection-separation-{rate,epochs,top-k,margin}~.
+  It uses n-gram-supported start-long targets, finds the nearest target and
+  same-shape rival prototypes in projected space, and nudges the low-rank
+  output-head projection along the target-minus-rival direction.  A short large
+  smoke run with rate 0.02, margin 0.90, and top-k 10 updated 8 of 9
+  start-long n-gram hits while preserving fallback 846 and
+  ~output-head-prototype-only~ 653, but the local start-long rank/margin stayed
+  flat at 29.22 / -0.89.  This confirms the separation pass is wired into the
+  benchmark path, but the next improvement likely needs either a stronger
+  projection update or a coupled target/rival prototype-score update.  The
+  separation pass can now optionally couple that projection nudge with target
+  prototype score-bonus and rival prototype bias demotion via
+  ~photon-large-readout-start-long-projection-separation-score-bonus-rate~ and
+  ~photon-large-readout-start-long-projection-separation-rival-bias-rate~.  On
+  the short large smoke split, rate 0.05/0.05 changed the local reader from
+  576 to 884 permil and improved average same-shape margin from -0.98 to
+  -0.82, while rank moved from 28.22 to 25.44.  The stronger 0.20/0.20 variant
+  reached 538 to 846 permil locally and improved margin from -1.34 to -0.55.
+  Both variants preserved full fallback 846, but final
+  ~output-head-prototype-only~ fell to 615 from the no-coupling smoke's 653, so
+  this update is useful evidence but needs acceptance gating before larger
+  splits.  A pocketed acceptance wrapper is now available via
+  ~photon-start-long-projection-separation-pocket~ and
+  ~photon-large-readout-start-long-projection-separation-pocket-enabled~.  With
+  the 0.05/0.05 coupling and zero global tolerance, the short large smoke
+  rejected the over-updated epoch, preserved ~output-head-prototype-only~ at
+  653, and reported the rejected eval row as 615.  Even with tolerance 40, it
+  still rejected the update because static start-long top-1/top-3/top-5 and
+  average rank did not improve after the final model state was evaluated.  This
+  separates a sequential local improvement from a durable readout improvement;
+  the next target is a state/prototype update whose benefit survives static
+  evaluation.  A first start-long raw prototype merge pass is now available as
+  ~photon-start-long-prototype-merge-token-reader~ plus the pocket wrapper
+  ~photon-start-long-prototype-merge-pocket~.  It stores a raw prediction-state
+  merge into the target prototype table for n-gram-supported start-long
+  targets, avoiding the double-projection issue in projected-prototype storage.
+  On the short large smoke split, merge rate 1.0 with pocket enabled accepted
+  9 merges, preserved full fallback 846 and ~output-head-prototype-only~ 653,
+  and moved static start-long average target rank from 28.56 to 5.0.  Static
+  start-long top-1/top-3/top-5 stayed 111/333/555, so the pass finally makes the
+  representation improvement durable, but it still needs a rank-to-top-k bridge.
+  The merge pass can now also apply target/rival prototype-bias deltas via
+  ~photon-large-readout-start-long-prototype-merge-target-bias-rate~,
+  ~photon-large-readout-start-long-prototype-merge-rival-bias-rate~, and
+  ~photon-large-readout-start-long-prototype-merge-rivals~.  On the short large
+  smoke split, target/rival bias 0.05 with 3 rivals improved the sequential
+  local reader rank from 29.33 to 1.44, but the static eval still selected the
+  same pocket result: full fallback 846, ~output-head-prototype-only~ 653, and
+  static start-long top-1/top-3/top-5 111/333/555 with average rank 5.0.  This
+  indicates global start-long bias largely cancels across start-long rivals.
+  The merge pass can also add context-specific rival negative prototypes through
+  ~photon-large-readout-start-long-prototype-merge-rival-negative-weight~.  With
+  weight 0.50 and 3 rivals, the short large smoke accepted the pocket update,
+  preserved full fallback 846 and ~output-head-prototype-only~ 653, and kept
+  static start-long top-1/top-3/top-5 at 111/333/555 with average rank 5.0.
+  The local reader improved to rank 4.22, but did not beat the merge-only
+  static result.  The next bridge should therefore be candidate-level search
+  over target/rival adjustments, rather than applying the same negative rule to
+  every start-long n-gram hit.  That candidate-level path is now exposed as
+  ~photon-start-long-prototype-merge-candidate-search~ and
+  ~photon-large-readout-start-long-prototype-merge-candidate-search-enabled~,
+  with ~photon-large-readout-start-long-prototype-merge-candidate-limit~ for
+  bounded smoke runs.  It snapshots prototypes, prototype bias, and negative
+  prototypes, applies one target/rival merge candidate at a time, and accepts
+  only candidates that improve start-long static eval under the same global
+  accuracy floor as the pocket wrapper.  On the short large smoke split, merge
+  rate 1.0 plus candidate search tested 9 candidates and accepted 1, preserving
+  full fallback 846 and ~output-head-prototype-only~ 653 while moving static
+  start-long average rank from 28.56 to 5.0.  Static top-1/top-3/top-5 remained
+  111/333/555.  Adding target bias 0.05 made the search reject all 9 candidates,
+  confirming that the remaining bottleneck is not a uniform target/rival
+  offset but a gated readout path that can distinguish multiple start-long
+  targets sharing a near-identical state.
+  A start-long classifier candidate search is now available through
+  ~photon-start-long-classifier-candidate-search~ and
+  ~photon-large-readout-wordpiece-start-long-classifier-candidate-search-enabled~.
+  It trains the start-long-only classifier candidate by candidate from
+  n-gram-supported misses, snapshots classifier head/bias, and accepts only
+  candidates that improve classifier-only start-long top-k/rank.  On the short
+  large smoke split, the current classifier candidates all shared the same
+  state and were rejected: 8 tested, 0 accepted, classifier-only start-long
+  accuracy 111, top-3 222, top-5 444, average rank 25.67.  However, adding
+  ~start-long-classifier-teacher-scaled~ to the distill candidate set exposed a
+  useful held-out improvement: its final held-out after score reached 618
+  permil versus 605 for ~full-scaled~, even though the old internal
+  linear/prototype selector still preferred ~full-scaled~.  The large
+  benchmark therefore has an opt-in
+  ~photon-large-readout-full-distill-selection-after-weight~ selector term.
+  With weight 8.0 on the same short smoke, it selected
+  ~start-long-classifier-teacher-scaled~ and moved final held-out accuracy from
+  605 to 618 while preserving full fallback 846 and start-long fallback 888.
+  A direct n-gram-supported start-long teacher is also exposed as the
+  distill-only component ~start-long-ngram-teacher~ and the benchmark candidate
+  ~start-long-ngram-teacher-scaled~.  It adds a masked start-long-only
+  n-gram-anchor boost to ~full~ without changing inference-time ~full~.  On
+  the same short smoke, weight 8.0 behaved like ~full-scaled~: teacher accuracy
+  846, dense linear score 269, final held-out after 605.  With
+  ~selection-after-weight . 8.0~, the selector still preferred
+  ~start-long-classifier-teacher-scaled~ at held-out after 618.  This confirms
+  the current full teacher already carries the usable n-gram signal; the
+  remaining gain comes from choosing the candidate by held-out generation/eval
+  behavior rather than by internal dense/prototype compression score alone.
+  The next target is therefore the start-long-piece side of the representation
+  and dense-head compression, not a simple class logit multiplier, target bias,
+  negative memory, anchor-state mixing, post-hoc prototype refresh, or a local
+  state-path nudge applied after prototype misses.  ~make
+  large-readout-benchmark~ runs this larger split without the final
+  generation-profile rows, so readout regressions can be checked before
+  running the full ~large-generation-benchmark~.  It now uses the same
+  four-candidate teacher selector as the smoke wrapper.  On the current larger
+  split it selects ~full-unscaled~ with final held-out after 607, fallback 732,
+  and start-long-piece fallback 578; ~full-scaled~ and
+  ~start-long-ngram-teacher-scaled~ tie at after 607/score 5683, while
+  ~start-long-classifier-teacher-scaled~ falls to after 602/score 5530 because
+  its classifier teacher has no hits on this split.  The intermediate
+  ~make large-readout-mid-benchmark~ row runs in about 76 seconds on the
+  current machine and prints only a compact summary.  With a 240-token train
+  slice, 160-token eval slice, context size 4, hidden size 8, and 80-token
+  diagnostics, it selects ~full-unscaled~ with after 570, fallback 750,
+  start-long fallback 625, start-long output-head-prototype 125, and
+  start-long prototype top-1/top-3/top-5 of 125/250/333.  The candidate table
+  shows ~full-unscaled~ at score 5322, ~start-long-classifier-teacher-scaled~
+  at after 570/score 5256, and both scaled full/ngram teachers at after
+  551/score 5157.  Prototype competition diagnostics now also report
+  ~top-rival-tokens~ with token id, piece, kind, shape, and count.  On this
+  mid split, start-long-piece rivals are highly concentrated: ~memo~ is the top
+  rival 15 out of 24 times, followed by ~shou~ 5 times and one-off rivals
+  ~chun~, ~rare~, and ~word~.  This gives a faster regression surface for
+  start-long compression work before paying for the full 372-token eval split,
+  and shows that the next update should suppress dominant same-shape rivals
+  conditionally instead of applying a uniform start-long bias.
+  ~make large-readout-mid-ablation~ compares opt-in start-long update families
+  on the same middle-sized split.  Current rows keep after 570 and fallback 750
+  unchanged, so the useful signal is the start-long prototype competition row:
+  baseline is top-1/top-3/top-5 125/250/333 with average rank 66.83;
+  ~prototype-merge-pocket~ preserves top-1/top-5, lifts top-3 to 291, and
+  improves average rank to 9.17; ~prototype-merge-search~ lifts top-3/top-5 to
+  291/375 but only improves rank to 29.75; sequential
+  ~prototype-merge-pocket-search~ falls back to the pocket result;
+  ~prototype-merge-rival-bias-search~ with rival bias 0.05 and 3 rivals keeps
+  after/fallback stable and matches the top-5 375 result, but still leaves
+  top-3 at 250; raising rival bias to 0.20 gives the same top-5 375 with worse
+  rank, and adding target bias 0.05 damages top-1/top-3/top-5 to 83/208/333;
+  candidate-local ~prototype-merge-rival-line-search~ now tries same-shape
+  rival demotion amounts and keeps only accepted top-k/rank improvements.  With
+  step/max 0.02/0.12 or 0.05/0.30 it reaches the same safe top-5 375 result
+  while keeping after 570 and fallback 750, but still cannot lift top-3/top-1;
+  ~prototype-merge-dominant-rival-search~ now first counts rivals across the
+  candidate set and demotes only rivals that appear at least 3 times.  With
+  dominant-rival bias 0.03 it keeps after 570 and fallback 750, lifts
+  start-long top-3/top-5 to 291/375, and improves average rank to 30.33.
+  Raising the same bias to 0.06 gives the same row, so the current dominant
+  rival hook is useful as a targeted safe demotion surface but still does not
+  create a new top-1 hit; ~prototype-merge-state-separation-search~ now adds
+  an opt-in target prototype state nudged away from the current rival's best
+  raw prototype state.  Separation rates 0.25 and 0.75 both preserve after 570
+  and fallback 750, reach start-long top-1/top-3/top-5 125/291/375, and improve
+  average rank to 29.75.  This matches the candidate-search top-k gain but
+  still does not add a top-1 hit, so prototype insertion/separation alone is
+  not enough; accepted merge candidates can now also push the dense affine
+  output head through
+  ~output-head-start-long-prototype-merge-dense-head-rate~.  On the mid split,
+  rates 0.02 and 0.10 both preserve after 570 and fallback 750 but leave
+  start-long raw-output-head at 83 and prototype top-1/top-3/top-5 at
+  125/291/375.  This means feeding the accepted prototype candidate state back
+  into the dense head is wired and safe, but it does not yet create a stronger
+  start-long top-1 decision; ~start-long-classifier-readout~ now exposes the
+  start-long classifier as an opt-in inference-time full-readout component
+  using ~wordpiece-start-long-classifier-readout-weight~.  Unlike the
+  prototype-only updates, this changes the final held-out path: weight 0.05
+  preserves after 570/fallback 750 but lowers top-5 to 921, weight 0.25 raises
+  fallback to 763 but lowers held-out after to 564, and weight 0.10 gives the
+  best current mid row with after 583, fallback 776, and top-5 947.  It does
+  worsen the static prototype competition row to start-long top-1/top-3/top-5
+  41/208/291, so it should be treated as a final-readout gain rather than a
+  prototype repair.  The mid ablation selector now handles this as a full-run
+  weight selection instead of a post-training readout toggle, because this
+  weight also changes the normal training path.  With candidates
+  0.0/0.05/0.10/0.25 it selects weight 0.10: candidate scores are 5310, 5310,
+  5440, and 5275 respectively, and the selected row preserves the fixed 0.10
+  result with after 583, fallback 776, and top-5 947.  Adding
+  ~start-long-same-shape-top1-search~ after the selected classifier-readout
+  row keeps the same selected weight 0.10 and the same final after/fallback/top-5
+  583/776/947, while improving the static start-long prototype competition
+  top-1 from 41 to 125 and average rank from 67.38 to 17.83.  This is now the
+  best guarded static-prototype repair row, but it trades off top-3 from 208 to
+  166 and leaves top-5 at 291.  Combining the 0.10 row with state-separation
+  preserves final metrics and improves rank to 31.21 without moving top-k;
+  combining state-separation with top1-search worsens top-3/top-5 to 125/250,
+  so it is not the current default;
+  ~prototype-merge-score-bonus-search~ with score-bonus 0.01 moves
+  raw-output-head from 83 to 125 but leaves prototype top-1/top-3/top-5 at
+  125/250/333, while a stronger 0.08 score-bonus worsens top-1 to 83; and
+  ~projection-separation-pocket~ only moves raw-output-head from 83 to 125
+  without improving prototype top-k/rank.  The next update should therefore
+  use this selector as the stable final-readout guard while looking for a
+  separate update that repairs the static start-long prototype competition.
+  ~make
+  large-readout-smoke-benchmark~ is the faster structural check, currently
+  using a 120-token train slice, 72-token eval slice, 32-token diagnostics, one
+  full-distill epoch, and a smaller hidden size 6/context size 3 model.  The
+  smoke now compares ~full-scaled~,
+  ~start-long-classifier-teacher-scaled~,
+  ~start-long-ngram-teacher-scaled~, and ~full-unscaled~ under
+  ~photon-large-readout-full-distill-selection-after-weight . 8.0~.  On the
+  current smoke slice the selector picks ~full-scaled~ by tie order: all scaled
+  teacher candidates land at final held-out accuracy 608, while
+  ~full-unscaled~ lands at 594.  The selected smoke row reports fallback 793
+  and start-long fallback 900, so the wrapper now acts as a standard teacher
+  candidate regression surface even when the smaller split does not reproduce
+  the 618 classifier-teacher win from the 80-token/context-4 probe.
 - A first experimental wordpiece-style tokenizer API is available via
   ~photon-build-wordpiece-vocab~, ~photon-encode-wordpiece-text~, and
   ~photon-decode-wordpiece-tokens~.  The wordpiece vocab now reserves stable
@@ -359,24 +991,28 @@ Current stream split snapshot:
   preview vocab size is 57 and the short prompts round-trip as wordpiece
   tokens.  The tokenizer is also connected to training via
   ~photon-train-wordpiece-text~ and ~photon-train-wordpiece-text-file-split~.
-  Wordpiece models apply a stronger wordpiece-only suffix n-gram readout
-  default, so char-stream defaults remain unchanged while subword fallback can
-  use repeated piece contexts more directly.  ~make wordpiece-train~ currently
-  reports wordpiece held-out accuracy improving from 0 to 662 permil and
-  memory-off fallback at 737 permil.  ~linear-output-head-only~ now reaches
-  500 permil on the same split, up from the original 306 stream baseline and
-  from the earlier 475 wordpiece compression snapshot.  Wordpiece fallback
-  diagnostics show the split clearly: short pieces reach 816 permil fallback
-  accuracy, while long pieces improved from 64 to 612 permil and remain the
-  next target.  The same run keeps top-3 fallback at 762 permil, which is the
-  immediate ceiling for the next readout/prototype update.  Vocabularies can
+  Wordpiece models train with the moderate suffix n-gram readout weight, then
+  switch to a stronger final readout weight for evaluation/generation.  This
+  keeps dense affine compression stable while letting subword fallback use
+  repeated piece contexts more directly.  ~make wordpiece-train~ currently
+  reports wordpiece held-out accuracy improving from 0 to 825 permil and
+  memory-off fallback at 900 permil.  ~linear-output-head-only~ reaches 587
+  permil on the same split after full-readout teacher distillation.  Wordpiece
+  fallback diagnostics show the split
+  clearly: short pieces reach 897 permil fallback accuracy, long pieces reach
+  903 permil, and rare pieces reach 833 permil.  The same run keeps top-5
+  fallback at 950 permil.  Final readout temperature scaling reduces the
+  high-confidence structural/long-piece miss margins without changing the
+  fallback target choices.
+  Vocabularies can
   be saved and reused with ~photon-save-vocab~ / ~photon-load-vocab~ or by
   passing ~vocab-path~ to ~photon-load-batch-dataset-text-file~, which keeps
   train/eval/generate on a stable token id space.  Wordpiece diagnostics now
   include unknown and rare target counts, rare fallback accuracy, and per-miss
-  target counts; the current sample has 6 rare held-out targets and 0 permil
-  rare fallback accuracy, making rare/long pieces the next clear readout
-  target.  Batch dataset loading also records tokenizer-side token diagnostics
+  target counts; the current sample has 6 rare held-out targets and 833 permil
+  rare fallback accuracy after the final rescue pass, while calibration and the
+  remaining high-margin misses stay visible in the miss summary.  Batch dataset
+  loading also records tokenizer-side token diagnostics
   in dataset metadata, saved vocab metadata, and model checkpoints:
   vocab size, token count, unknown-token count/permil, rare-token count/permil,
   long/short/special token counts, and token-kind counts.  Current wordpiece
@@ -398,7 +1034,37 @@ Current stream split snapshot:
 #+end_src
 
   Greedy remains the default when options are omitted.  ~top-p~ can be used in
-  place of or together with ~top-k~.  Trace APIs
+  place of or together with ~top-k~.  Wordpiece generation also accepts
+  optional ~ngram-bias~ and ~repeat-ngram-bias~ controls.  The benchmark keeps
+  them off in the baseline row and reports a separate
+  ~sampling-bias-ablation~ block; on the current tiny corpus,
+  ~ngram-bias . 0.40~ improves top-k distinct-1/2 but raises collapse score
+  slightly, while ~repeat-ngram-bias . 0.35~ improves distinct-1/2 more
+  strongly at the cost of a higher collapse score.  ~repeat-ngram-bias~ can be
+  gated with ~repeat-ngram-bias-min-count~ so it only applies after the
+  repeated-bigram candidate count reaches that threshold.  ~ngram-bias~ can be
+  combined with ~ngram-bias-gate-margin~; negative values disable the gate,
+  zero only applies the bias when the n-gram candidate is already the readout
+  best, and positive values allow candidates within that logit margin.  It can
+  also be combined with ~ngram-bias-repeat-scale~ and
+  ~ngram-bias-repeat-window~ to reduce n-gram bias when the candidate would
+  continue a repeated bigram in the generated history.  Internally, text
+  generation now passes full generated token history into generation
+  adjustment while keeping model readout on the configured context window.
+  The benchmark also emits ~sampling-weight-sweep~ with a compact frontier and
+  ~sampling-profile-validation~ over train/eval prompt sets; the current
+  recommended top-k profile is:
+
+#+begin_src elisp
+'((mode . sample) (temperature . 0.85) (top-k . 5)
+  (repetition-penalty . 1.10)
+  (ngram-bias . 0.25) (repeat-ngram-bias . 0.35))
+#+end_src
+
+  Sampling options can include ~seed~ for
+  deterministic generation, and ~generation-benchmark~ now reports a compact
+  multi-seed summary so sampling changes can be judged across more than one
+  random draw.  Trace APIs
   ~photon-model-generate-with-trace~ and
   ~photon-model-generate-text-with-trace~ accept the same options and record
   the active mode/options in each trace row, so sampled generations can be
@@ -542,6 +1208,16 @@ model code.
 - ~examples/stream-train.el~: chunked file reader training example
 - ~examples/stream-diagnostics.el~: stream fallback/top-k/char-class benchmark
 - ~examples/generation-benchmark.el~: tiny text-generation quality benchmark
+- ~examples/large-readout-smoke-benchmark.el~: smaller larger-stream readout
+  smoke probe for quick structural regression checks
+- ~examples/large-readout-mid-benchmark.el~: compact middle-sized larger-stream
+  readout regression row
+- ~examples/large-readout-mid-ablation.el~: middle-sized start-long readout
+  ablation across opt-in update families
+- ~examples/large-readout-benchmark.el~: larger stream train/eval/readout
+  diagnostics without generation-profile rows
+- ~examples/large-generation-benchmark.el~: larger stream generation profile
+  validation benchmark
 - ~examples/tensor-benchmark.el~: backend matrix/tensor operation benchmark
 - ~examples/wordpiece-train.el~: wordpiece train/eval/generate example
 - ~examples/vector-train.el~: training with the ~elisp-vector~ backend

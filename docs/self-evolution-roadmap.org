@@ -1,0 +1,294 @@
+#+title: nelisp-photon Self-Evolution Roadmap
+#+author: nelisp-photon
+#+language: en
+
+* Purpose
+
+The goal is to grow ~nelisp-photon~ into a small AI development platform with a
+self-improvement loop.
+
+In this roadmap, self-evolution does not mean that the model autonomously rewrites
+itself without oversight. The first practical target is an evaluation-driven,
+semi-automated improvement loop.
+
+#+begin_src text
+train
+evaluate
+diagnose failures
+propose improvements
+create patch candidates
+validate with tests and benchmarks
+let a human decide whether to accept the change
+#+end_src
+
+This loop should be automated in stages until the repository becomes a small
+self-improving AI lab.
+
+* Core Architecture
+
+#+begin_src text
++-------------------+
+| Corpus / Tasks    |
++---------+---------+
+          |
+          v
++-------------------+
+| Training Pipeline |
++---------+---------+
+          |
+          v
++-------------------+
+| Model Checkpoint  |
++---------+---------+
+          |
+          v
++-------------------+
+| Benchmark Harness |
++---------+---------+
+          |
+          v
++-------------------+
+| Diagnostics       |
++---------+---------+
+          |
+          v
++-------------------+
+| Patch Proposal AI |
++---------+---------+
+          |
+          v
++-------------------+
+| Test / Benchmark  |
++---------+---------+
+          |
+          v
++-------------------+
+| Human Review      |
++-------------------+
+#+end_src
+
+* Phase 1: Small LM Experiment Platform
+
+Goal: stabilize the basic ability to train, evaluate, and compare small language
+model experiments.
+
+Implementation targets:
+
+- streaming corpus loader
+- train/eval split
+- checkpoint / resume
+- benchmark result persistence
+- generation benchmark
+- loss / accuracy / NLL / perplexity / distinct-n records
+- cache hit/miss records
+- ablation comparison
+
+Completion criteria:
+
+- ~make train-corpus~
+- ~make benchmark~
+- ~make generation-benchmark~
+- ~make compare-runs~
+
+These commands should make run-to-run metric changes visible.
+
+Estimated time: 1-2 weeks.
+
+* Phase 2: Diagnostics System
+
+Goal: make failures mechanically explainable.
+
+Implementation targets:
+
+- miss case recorder
+- logits / margin debug
+- readout component contribution
+- token-class accuracy
+- rare / long / unknown token accuracy
+- context-length accuracy
+- calibration diagnostics
+- overfit detector
+
+Example output:
+
+#+begin_src elisp
+((case-id . 42)
+ (context . "while ")
+ (target . "held")
+ (prediction . "train")
+ (margin . -60.4)
+ (failed-components
+  ((ngram-anchor . miss)
+   (prototype . weak)
+   (linear-output-head . weak)
+   (full-readout . wrong)))
+ (suggested-fix . output-head-distill))
+#+end_src
+
+Completion criteria:
+
+- benchmark output includes a ranked failure classification
+- failures are categorized as readout / tokenizer / memory / calibration / generation
+
+Estimated time: 2-3 weeks.
+
+* Phase 3: Improvement Proposal Generation
+
+Goal: let the AI generate improvement hypotheses before it generates patches.
+
+Implementation targets:
+
+- diagnostics summary generator
+- improvement proposal schema
+- hyperparameter sweep plan
+- update-rule candidate description
+- risk estimate
+- expected metric movement
+
+Proposal format:
+
+#+begin_src elisp
+((proposal-id . "output-head-distill-rare-v2")
+ (target-metric . rare-fallback-accuracy)
+ (expected-change . "+50 permil")
+ (risk . calibration-worse)
+ (files . ("lisp/photon.el" "test/photon-test.el"))
+ (strategy . "increase teacher signal only for rare long misses"))
+#+end_src
+
+Completion criteria:
+
+- the AI can produce 3-5 improvement proposals from benchmark results
+- each proposal includes expected effect, risk, and validation method
+
+Estimated time: about 1 month.
+
+* Phase 4: Patch Candidate Loop
+
+Goal: let the AI create small patch candidates and validate them.
+
+Safety rules:
+
+- changes must be small
+- one patch must correspond to one hypothesis
+- every patch must run tests and benchmarks
+- metric regressions must cause rejection
+- no patch is merged without human approval
+
+Loop:
+
+#+begin_src text
+diagnostics
+ -> proposal
+ -> patch branch / worktree
+ -> make test
+ -> make benchmark
+ -> metric diff
+ -> accept/reject recommendation
+#+end_src
+
+Required features:
+
+- patch sandbox
+- benchmark baseline persistence
+- metric regression detector
+- auto-revert for failed patches
+- patch report generator
+
+Completion criteria:
+
+- the AI can report whether a patch is an accept candidate or a reject candidate
+- the report includes the reason for the recommendation
+- the human only needs to make the final decision
+
+Estimated time: 2-3 months.
+
+* Phase 5: Self-Improving Lab
+
+Goal: turn the system into a semi-automated self-improvement lab.
+
+At this stage, the project starts to resemble practical self-evolution.
+
+#+begin_src text
+nightly run
+ -> train
+ -> benchmark
+ -> diagnose
+ -> generate proposals
+ -> try safe patches
+ -> rank results
+ -> report to user
+#+end_src
+
+Example report:
+
+#+begin_src text
+Today's improvement candidates:
+1. rare long token distill v3
+   fallback +25, NLL +0.02 worse
+   accept candidate
+
+2. cache fingerprint v2
+   speed +12%, accuracy unchanged
+   accept candidate
+
+3. prototype margin boost
+   fallback +10, calibration much worse
+   reject candidate
+#+end_src
+
+Completion criteria:
+
+- every improvement attempt is logged
+- successful and failed patches become reusable evidence
+- future proposals can refer to past results
+
+Estimated time: 3-6 months.
+
+* Design Principles
+
+- Prefer evaluation-driven semi-automation over full autonomy.
+- Do not accept changes that fail the benchmark gates.
+- Track multiple metrics, not a single score.
+- Only small patches should be generated automatically.
+- Large architectural decisions remain human decisions.
+- Keep boundaries clean so reusable components can become separate libraries.
+
+* Future Extraction Candidates
+
+- ~photon-vector.el~
+- tokenizer
+- benchmark harness
+- diagnostics
+- patch proposal runner
+- corpus loader
+- metric comparison
+
+* Critical Roadmap
+
+The short-term order of work:
+
+1. Persist benchmark results to files.
+2. Implement run-to-run comparison.
+3. Structure diagnostics output.
+4. Define an improvement proposal schema.
+5. Build a runner for small patch candidates.
+6. Accept or reject candidates from test and benchmark results.
+7. Build the nightly self-improvement loop.
+
+* Conclusion
+
+~nelisp-photon~ should not try to make the model itself fully responsible for
+self-evolution at the beginning. The practical design is an evaluation,
+diagnosis, proposal, and validation loop.
+
+The first milestone is:
+
+#+begin_src text
+The AI reads its own failures,
+proposes improvements,
+tries small patches,
+and judges them with benchmarks.
+#+end_src
+
+This is a realistic path for individual development.

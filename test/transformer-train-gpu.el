@@ -1,0 +1,83 @@
+;;; transformer-train-gpu.el --- 1-step GPU training of a tiny transformer  -*- lexical-binding: t; -*-
+;; Builds a tiny 1-layer, single-head transformer with photon-autograd,
+;; runs forward+backward+SGD for one step on the GPU backend, and checks
+;; the loss decreases.  GOAL demo.
+;;   emacs -Q --batch -L lisp -l test/transformer-train-gpu.el
+(add-to-list 'load-path (expand-file-name "lisp"))
+(add-to-list 'load-path (expand-file-name "../nelisp-gpu/lisp"))
+(require 'photon-autograd)
+(require 'photon-tensor-gpu)
+(require 'nelisp-gpu-server)
+(setq nelisp-gpu-server-bin (expand-file-name "../nelisp-gpu/host/vkserver"))
+
+(defun tr--p (shape seed scale)
+  (let ((n 1)) (dolist (d shape) (setq n (* n d)))
+    (photon-autograd-const
+     (photon-tensor-from-list
+      shape
+      (mapcar (lambda (i)
+                (* scale 2.0
+                   (- (/ (float (mod (+ (* (1+ i) 2654435761) (* (1+ seed) 40503))
+                                     65536)) 65536.0)
+                      0.5)))
+              (number-sequence 0 (1- n)))))))
+(defun tr--ones (n) (photon-autograd-const (photon-tensor-create (list n) 1.0)))
+(defun tr--zeros (n) (photon-autograd-const (photon-tensor-create (list n) 0.0)))
+
+(let* ((vocab 16) (dim 8) (ff 16)
+       (tokens '(1 2 3 4)) (targets (vector 2 3 4 5))
+       (seq (length tokens)) (sc (/ 1.0 (sqrt (float dim))))
+       (wte (tr--p (list vocab dim) 1 sc))
+       (ln1g (tr--ones dim)) (ln1b (tr--zeros dim))
+       (Wq (tr--p (list dim dim) 2 sc)) (bq (tr--zeros dim))
+       (Wk (tr--p (list dim dim) 3 sc)) (bk (tr--zeros dim))
+       (Wv (tr--p (list dim dim) 4 sc)) (bv (tr--zeros dim))
+       (Wo (tr--p (list dim dim) 5 sc)) (bo (tr--zeros dim))
+       (ln2g (tr--ones dim)) (ln2b (tr--zeros dim))
+       (W1 (tr--p (list ff dim) 6 sc)) (b1 (tr--zeros ff))
+       (W2 (tr--p (list dim ff) 7 sc)) (b2 (tr--zeros dim))
+       (lnfg (tr--ones dim)) (lnfb (tr--zeros dim))
+       (Wh (tr--p (list vocab dim) 8 sc)) (bh (tr--zeros vocab))
+       (params (list wte ln1g ln1b Wq bq Wk bk Wv bv Wo bo
+                     ln2g ln2b W1 b1 W2 b2 lnfg lnfb Wh bh))
+       (mask (let ((md (make-vector (* seq seq) 0.0)) (i 0))
+               (while (< i seq)
+                 (let ((j (1+ i)))
+                   (while (< j seq) (aset md (+ (* i seq) j) -1.0e30) (setq j (1+ j))))
+                 (setq i (1+ i)))
+               (photon-autograd-const (photon-tensor (list seq seq) md)))))
+  (cl-flet ((forward ()
+              (photon-autograd-reset-tape)
+              (let* ((x (photon-autograd-embedding wte tokens dim))
+                     (a (photon-autograd-layernorm-rows x ln1g ln1b))
+                     (q (photon-autograd-linear a Wq bq))
+                     (k (photon-autograd-linear a Wk bk))
+                     (v (photon-autograd-linear a Wv bv))
+                     (s (photon-autograd-scale
+                         (photon-autograd-matmul q (photon-autograd-transpose k)) sc))
+                     (sm (photon-autograd-add s mask))
+                     (p (photon-autograd-softmax-rows sm))
+                     (ctx (photon-autograd-matmul p v))
+                     (attn (photon-autograd-linear ctx Wo bo))
+                     (x1 (photon-autograd-add x attn))
+                     (c (photon-autograd-layernorm-rows x1 ln2g ln2b))
+                     (h (photon-autograd-gelu (photon-autograd-linear c W1 b1)))
+                     (mout (photon-autograd-linear h W2 b2))
+                     (x2 (photon-autograd-add x1 mout))
+                     (xf (photon-autograd-layernorm-rows x2 lnfg lnfb))
+                     (logits (photon-autograd-linear xf Wh bh)))
+                (photon-autograd-softmax-ce logits targets)))
+            (lval (l) (aref (photon-tensor-data (pav-value l)) 0)))
+    (nelisp-gpu-server-start)
+    (photon-tensor-use-gpu-backend)
+    (let* ((l0 (forward)) (loss0 (lval l0)))
+      (photon-autograd-zero-grad params)
+      (photon-autograd-backward l0)
+      (photon-autograd-sgd params 0.1)
+      (let ((loss1 (lval (forward))))
+        (photon-tensor-use-cpu-backend)
+        (nelisp-gpu-server-stop)
+        (princ (format "loss0=%.5f loss1=%.5f (GPU forward+backward+SGD)\n" loss0 loss1))
+        (princ (format "TRANSFORMER-TRAIN-GPU=%s\n"
+                       (if (< loss1 loss0) "PASS" "FAIL")))))))
+;;; transformer-train-gpu.el ends here

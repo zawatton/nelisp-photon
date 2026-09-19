@@ -1,0 +1,45 @@
+;;; autograd-gradcheck.el --- finite-difference check of photon-autograd  -*- lexical-binding: t; -*-
+;; Validates the autograd engine: analytic grads vs numeric (central diff).
+;;   emacs -Q --batch -L lisp -l test/autograd-gradcheck.el
+(add-to-list 'load-path (expand-file-name "lisp"))
+(require 'photon-autograd)
+
+(defun gc--mk (shape gen)
+  (let ((n 1)) (dolist (d shape) (setq n (* n d)))
+    (photon-autograd-const
+     (photon-tensor-from-list shape (mapcar gen (number-sequence 0 (1- n)))))))
+
+(let* ((in 4) (hid 5) (out 3) (batch 2)
+       (x  (gc--mk (list batch in) (lambda (i) (* 0.1 (- (mod i 7) 3)))))
+       (W1 (gc--mk (list hid in)   (lambda (i) (* 0.1 (- (mod i 5) 2)))))
+       (b1 (gc--mk (list hid)      (lambda (i) (* 0.01 (- (mod i 3) 1)))))
+       (W2 (gc--mk (list out hid)  (lambda (i) (* 0.1 (- (mod i 4) 2)))))
+       (b2 (gc--mk (list out)      (lambda (_) 0.0)))
+       (targets (vector 1 2))
+       (params (list W1 b1 W2 b2)))
+  (cl-flet ((forward-loss ()
+              (photon-autograd-reset-tape)
+              (let* ((h (photon-autograd-gelu (photon-autograd-linear x W1 b1)))
+                     (o (photon-autograd-linear h W2 b2)))
+                (photon-autograd-softmax-ce o targets)))
+            (lval (l) (aref (photon-tensor-data (pav-value l)) 0)))
+    (photon-autograd-zero-grad params)
+    (photon-autograd-backward (forward-loss))
+    (let* ((eps 1.0e-4)
+           (W1d (photon-tensor-data (pav-value W1)))
+           (W1g (photon-tensor-data (pav-grad W1)))
+           (maxerr 0.0) (k 0) (nk (length W1d)))
+      (while (< k nk)
+        (let ((orig (aref W1d k)) lp lm)
+          (aset W1d k (+ orig eps)) (setq lp (lval (forward-loss)))
+          (aset W1d k (- orig eps)) (setq lm (lval (forward-loss)))
+          (aset W1d k orig)
+          (let* ((numg (/ (- lp lm) (* 2.0 eps)))
+                 (ang (aref W1g k))
+                 (err (/ (abs (- numg ang)) (+ 1.0e-6 (abs numg) (abs ang)))))
+            (when (> err maxerr) (setq maxerr err))))
+        (setq k (1+ k)))
+      (princ (format "gradcheck W1 max_rel_err=%.3e\n" maxerr))
+      (princ (format "AUTOGRAD-GRADCHECK=%s\n"
+                     (if (< maxerr 1.0e-2) "PASS" "FAIL"))))))
+;;; autograd-gradcheck.el ends here
