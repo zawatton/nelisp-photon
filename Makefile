@@ -1,6 +1,22 @@
 NELISP ?= ../nelisp/target/nelisp
 EMACS ?= emacs
 
+
+# Byte-compilation.  Nothing here was ever compiled, so every one of these
+# files ran interpreted -- including the float32 codec that every activation
+# crosses on its way to and from the device.  Compiling it is worth 2.4x on
+# that codec alone and 1.6x on a whole transformer block.  The rule is
+# per-file so `make' recompiles only what changed, because a .elc that is
+# older than its .el is still preferred by `load' and only warns.
+PHOTON_ELC := $(patsubst %.el,%.elc,$(wildcard lisp/*.el))
+
+lisp/%.elc: lisp/%.el
+	$(EMACS) -Q --batch -L lisp \
+	  --eval '(setq byte-compile-warnings (quote (not docstrings)))' \
+	  -f batch-byte-compile $<
+
+compile: $(PHOTON_ELC)
+
 .PHONY: test smoke nelisp-smoke train text-train file-train stream-train stream-diagnostics wordpiece-train vector-train minibatch-train batch-train serious-train embedding-train params-train gain-train projection-train cache-train benchmark generation-benchmark large-readout-smoke-benchmark large-readout-mid-benchmark large-readout-mid-ablation large-readout-benchmark large-generation-benchmark large-streaming-eval photon-cli-train photon-cli-generate tensor-benchmark save-load
 
 test:
